@@ -18,6 +18,7 @@ function MatchTracker({ player, onBack }) {
   });
   const [score, setScore] = useState(0);
   const [alertLevel, setAlertLevel] = useState('none');
+  const [opponent, setOpponent] = useState('');
 
   useEffect(() => {
     fetchThresholds();
@@ -76,12 +77,44 @@ function MatchTracker({ player, onBack }) {
     const total = Math.min(100, Math.round(raw * setContext * situation * 0.6 + flagScore));
 
     setScore(total);
-    if (total >= 75) setAlertLevel('high');
-    else if (total >= 60) setAlertLevel('medium');
-    else if (total >= 35) setAlertLevel('watch');
-    else setAlertLevel('none');
+
+    if (total >= 75) {
+      if (alertLevel !== 'high') saveSignal(total, 'high');
+      setAlertLevel('high');
+    } else if (total >= 60) {
+      if (alertLevel !== 'medium' && alertLevel !== 'high') saveSignal(total, 'medium');
+      setAlertLevel('medium');
+    } else if (total >= 35) {
+      setAlertLevel('watch');
+    } else {
+      setAlertLevel('none');
+    }
   }
 
+  async function saveSignal(score, level) {
+    if (!player || !player.id) return;
+    
+    const { error } = await supabase
+      .from('signal_log')
+      .insert({
+        player_id: player.id,
+        match_date: new Date().toISOString().split('T')[0],
+        tournament: 'Live Match',
+        opponent: opponent || 'Unknown',
+        fired_at: new Date().toISOString(),
+        signal_score: score,
+        signal_type: flags.thirdSetCollapse || flags.umpireDispute ? 'short' : 'medium',
+        triggers_active: flags,
+        serve_pct_at_fire: servePct,
+        double_faults_at_fire: doubleFaults,
+        bp_missed_at_fire: bpMissed,
+        set_context: setContext === 1 ? '1st set' : setContext === 1.3 ? '2nd set' : '3rd set',
+      });
+  
+    if (error) {
+      console.error('Signal save error:', error);
+    }
+  }
   function getAlertColor() {
     if (alertLevel === 'high') return '#E24B4A';
     if (alertLevel === 'medium') return '#BA7517';
@@ -134,6 +167,13 @@ function MatchTracker({ player, onBack }) {
       <button onClick={onBack} style={{ fontSize: '12px', color: '#888', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 12px' }}>
         ← Back
       </button>
+      <input 
+  type="text"
+  placeholder="Opponent name"
+  value={opponent}
+  onChange={e => setOpponent(e.target.value)}
+  style={{ width: '100%', marginBottom: '12px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' }}
+/>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
