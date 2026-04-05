@@ -18,6 +18,7 @@ function MatchTracker({ player, onBack }) {
   });
   const [score, setScore] = useState(0);
   const [alertLevel, setAlertLevel] = useState('none');
+  const [prediction, setPrediction] = useState('');
   const [opponent, setOpponent] = useState('');
 
   useEffect(() => {
@@ -79,7 +80,7 @@ function MatchTracker({ player, onBack }) {
     setScore(total);
 
     if (total >= 75) {
-      if (alertLevel !== 'high') saveSignal(total, 'high');
+        if (alertLevel !== 'high') { saveSignal(total, 'high'); getPrediction(); }
       setAlertLevel('high');
     } else if (total >= 60) {
       if (alertLevel !== 'medium' && alertLevel !== 'high') saveSignal(total, 'medium');
@@ -113,6 +114,76 @@ function MatchTracker({ player, onBack }) {
   
     if (error) {
       console.error('Signal save error:', error);
+    }
+  }
+  async function getPrediction() {
+    try {
+      const { data: stats } = await supabase
+        .from('player_stats')
+        .select('*')
+        .eq('player_id', player.id)
+        .order('match_date', { ascending: false })
+        .limit(10);
+  
+      const { data: thresh } = await supabase
+        .from('signal_thresholds')
+        .select('*')
+        .eq('player_id', player.id)
+        .single();
+  
+      const prompt = `You are an expert tennis betting analyst. Analyze this live match situation and give a specific outcome prediction.
+  
+  PLAYER: ${player.name} (${player.nationality}, ranked #${player.ranking}, ${player.hand}-handed)
+  KNOWN COLLAPSE TRIGGERS: ${JSON.stringify(player.collapse_triggers)}
+  
+  LAST 10 MATCHES ON CLAY:
+  ${stats ? stats.map(s => `vs ${s.opponent}: ${s.result} ${s.score} | 1st serve: ${s.first_serve_pct}% | DFs: ${s.double_faults} | BP conv: ${s.bp_converted_pct}%`).join('\n') : 'No data'}
+  
+  SIGNAL THRESHOLDS:
+  Baseline first serve: ${thresh ? thresh.serve_baseline : 'N/A'}%
+  Signal threshold: ${thresh ? thresh.signal_threshold : 'N/A'}%
+  
+  CURRENT MATCH STATE:
+  - Opponent: ${opponent || 'Unknown'}
+  - Current first serve %: ${servePct}% (${thresh ? (servePct < thresh.signal_threshold ? 'BELOW SIGNAL THRESHOLD' : servePct < thresh.warn_threshold ? 'IN WATCH ZONE' : 'NORMAL') : ''})
+  - Double faults this set: ${doubleFaults}
+  - Break points missed: ${bpMissed}
+  - Consecutive points lost: ${consecutivePoints}
+  - Set: ${setContext === 1 ? '1st' : setContext === 1.3 ? '2nd' : '3rd'}
+  - Situation: ${situation === 2 ? 'Serving for set/match or tiebreak' : situation === 1.5 ? 'Leading but opponent broke back' : situation === 1.3 ? 'Serving to stay in set' : 'Normal game'}
+  - Active flags: ${Object.entries(flags).filter(([k,v]) => v).map(([k]) => k).join(', ') || 'None'}
+  - Signal score: ${score}/100
+  
+  Based on this data, provide:
+  1. The most likely outcome in the next 1-3 games (be specific)
+  2. Probability estimate (e.g. 65%)
+  3. What to bet on right now
+  4. How long the market window likely is
+  
+  Be direct and specific. Max 4 sentences.`;
+  
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': process.env.REACT_APP_ANTHROPIC_KEY,
+          'anthropic-version': '2023-06-01',
+          'anthropic-dangerous-direct-browser-access': 'true'
+        },
+        body: JSON.stringify({
+          model: 'claude-opus-4-5',
+          max_tokens: 300,
+          messages: [{ role: 'user', content: prompt }]
+        })
+      });
+  
+      const data = await response.json();
+      if (data.content && data.content[0]) {
+        setPrediction(data.content[0].text);
+      }
+    } catch (err) {
+      console.error('Prediction error:', err);
+      setPrediction('Prediction unavailable right now.');
     }
   }
   function getAlertColor() {
@@ -190,6 +261,12 @@ function MatchTracker({ player, onBack }) {
         <div style={{ color: 'white', fontWeight: '500', fontSize: '13px' }}>{getAlertText()}</div>
         <div style={{ color: 'rgba(255,255,255,0.85)', fontSize: '12px', marginTop: '4px' }}>{getOutcome()}</div>
       </div>
+      {prediction && (
+  <div style={{ padding: '14px', borderRadius: '10px', background: '#f8f9fa', border: '1px solid #e9ecef', marginBottom: '20px' }}>
+    <div style={{ fontSize: '11px', fontWeight: '500', color: '#888', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>AI Prediction</div>
+    <div style={{ fontSize: '13px', color: '#333', lineHeight: '1.6' }}>{prediction}</div>
+  </div>
+)}
 
       <div style={{ marginBottom: '16px' }}>
         <span style={labelStyle}>First serve % — baseline {thresholds ? Math.round(thresholds.serve_baseline) : '...'}% · signal below {thresholds ? Math.round(thresholds.signal_threshold) : '...'}%</span>
