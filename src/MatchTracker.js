@@ -171,7 +171,7 @@ function MatchTracker({ player, onBack }) {
           'anthropic-dangerous-direct-browser-access': 'true'
         },
         body: JSON.stringify({
-          model: 'claude-opus-4-5',
+          model: 'claude-opus-4-5-20251101',
           max_tokens: 300,
           messages: [{ role: 'user', content: prompt }]
         })
