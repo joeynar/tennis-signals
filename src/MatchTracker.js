@@ -178,6 +178,7 @@ function MatchTracker({ player, onBack }) {
       });
   
       const data = await response.json();
+      console.log('API response:', data);
       if (data.content && data.content[0]) {
         setPrediction(data.content[0].text);
       }
