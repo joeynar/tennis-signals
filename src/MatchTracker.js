@@ -80,7 +80,11 @@ function MatchTracker({ player, onBack }) {
     setScore(total);
 
     if (total >= 75) {
-        if (alertLevel !== 'high') { saveSignal(total, 'high'); getPrediction(); }
+        if (alertLevel !== 'high') { 
+            saveSignal(total, 'high'); 
+            getPrediction(); 
+            sendTelegram(`🚨 HIGH CONFIDENCE SIGNAL\n\nPlayer: ${player.name}\nOpponent: ${opponent || 'Unknown'}\nScore: ${total}/100\nFirst serve: ${servePct}%\nDouble faults: ${doubleFaults}\nBP missed: ${bpMissed}\n\nBet opponent now. Market window: 15-30 seconds.`);
+          }
       setAlertLevel('high');
     } else if (total >= 60) {
       if (alertLevel !== 'medium' && alertLevel !== 'high') saveSignal(total, 'medium');
@@ -187,6 +191,19 @@ function MatchTracker({ player, onBack }) {
       setPrediction('Prediction unavailable right now.');
     }
   }
+  async function sendTelegram(message) {
+  const botToken = '8734171567:AAHKUWJEXN6gq3OVrzmIRgkpQGZ7oudl5iM';
+  const chatId = '6013101232';
+  await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text: message,
+      parse_mode: 'HTML'
+    })
+  });
+}
   function getAlertColor() {
     if (alertLevel === 'high') return '#E24B4A';
     if (alertLevel === 'medium') return '#BA7517';
