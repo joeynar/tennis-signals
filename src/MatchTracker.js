@@ -20,6 +20,10 @@ function MatchTracker({ player, onBack }) {
   const [alertLevel, setAlertLevel] = useState('none');
   const [prediction, setPrediction] = useState('');
   const [opponent, setOpponent] = useState('');
+  const [set1ServePct, setSet1ServePct] = useState(65);
+const [set2ServePct, setSet2ServePct] = useState(65);
+const [gamesLostRow, setGamesLostRow] = useState(0);
+const [secondServePressure, setSecondServePressure] = useState(false);
 
   useEffect(() => {
     fetchThresholds();
@@ -67,6 +71,26 @@ function MatchTracker({ player, onBack }) {
     else if (bpMissed >= 3) bpScore = 10;
     else if (bpMissed >= 2) bpScore = 4;
 
+    let trendScore = 0;
+const currentSet = setContext === 1.8 ? 3 : setContext === 1.3 ? 2 : 1;
+if (currentSet === 2 && set1ServePct > 0) {
+  const drop = set1ServePct - servePct;
+  if (drop >= 15) trendScore = 25;
+  else if (drop >= 10) trendScore = 15;
+  else if (drop >= 5) trendScore = 8;
+}
+if (currentSet === 3 && set2ServePct > 0) {
+  const drop = set2ServePct - servePct;
+  if (drop >= 15) trendScore = 30;
+  else if (drop >= 10) trendScore = 18;
+  else if (drop >= 5) trendScore = 10;
+}
+let gamesScore = 0;
+if (gamesLostRow >= 4) gamesScore = 20;
+else if (gamesLostRow >= 3) gamesScore = 12;
+else if (gamesLostRow >= 2) gamesScore = 5;
+if (secondServePressure) gamesScore += 12;
+
     let flagScore = 0;
     if (flags.bodyLanguage) flagScore += 8;
     if (flags.umpireDispute) flagScore += 15;
@@ -74,7 +98,7 @@ function MatchTracker({ player, onBack }) {
     if (flags.bpCascade) flagScore += 10;
     if (flags.lostFirstSetBagel) flagScore += 12;
 
-    const raw = serveScore + dfScore + moScore + bpScore;
+    const raw = serveScore + dfScore + moScore + bpScore + trendScore + gamesScore;;
     const total = Math.min(100, Math.round(raw * setContext * situation * 0.6 + flagScore));
 
     setScore(total);
@@ -300,7 +324,24 @@ function MatchTracker({ player, onBack }) {
   </div>
 )}
 
-      <div style={{ marginBottom: '16px' }}>
+<div style={{ marginBottom: '16px' }}>
+  <span style={labelStyle}>Set 1 first serve % (for trend tracking)</span>
+  <input type="range" min="30" max="90" value={set1ServePct} onChange={e => setSet1ServePct(+e.target.value)} style={inputStyle} />
+  <div style={{ fontSize: '14px', fontWeight: '500' }}>{set1ServePct}%</div>
+</div>
+
+<div style={{ marginBottom: '16px' }}>
+  <span style={labelStyle}>Set 2 first serve % (for trend tracking)</span>
+  <input type="range" min="30" max="90" value={set2ServePct} onChange={e => setSet2ServePct(+e.target.value)} style={inputStyle} />
+  <div style={{ fontSize: '14px', fontWeight: '500' }}>{set2ServePct}%</div>
+</div>
+
+<div style={{ marginBottom: '16px' }}>
+  <span style={labelStyle}>Games lost in a row this set</span>
+  <input type="range" min="0" max="6" value={gamesLostRow} onChange={e => setGamesLostRow(+e.target.value)} style={inputStyle} />
+  <div style={{ fontSize: '14px', fontWeight: '500' }}>{gamesLostRow}</div>
+</div>
+<div style={{ marginBottom: '16px' }}>
         <span style={labelStyle}>First serve % — baseline {thresholds ? Math.round(thresholds.serve_baseline) : '...'}% · signal below {thresholds ? Math.round(thresholds.signal_threshold) : '...'}%</span>
         <input type="range" min="30" max="90" value={servePct} onChange={e => setServePct(+e.target.value)} style={inputStyle} />
         <div style={{ fontSize: '14px', fontWeight: '500' }}>{servePct}%</div>
@@ -354,6 +395,7 @@ function MatchTracker({ player, onBack }) {
         <button style={flagStyle(flags.thirdSetCollapse, true)} onClick={() => toggleFlag('thirdSetCollapse')}>3rd set collapse</button>
         <button style={flagStyle(flags.bpCascade, true)} onClick={() => toggleFlag('bpCascade')}>BP cascade</button>
         <button style={flagStyle(flags.lostFirstSetBagel, false)} onClick={() => toggleFlag('lostFirstSetBagel')}>Lost set 6-0/6-1</button>
+        <button style={flagStyle(secondServePressure, true)} onClick={() => setSecondServePressure(!secondServePressure)}>2nd serve under pressure</button>
       </div>
 
     </div>
