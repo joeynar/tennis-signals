@@ -256,6 +256,20 @@ function MatchTracker({ player, onBack }) {
       <button onClick={onBack} style={{ fontSize: '12px', color: '#888', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 12px' }}>
         ← Back
       </button>
+      <button onClick={() => {
+  setServePct(65);
+  setDoubleFaults(0);
+  setBpMissed(0);
+  setConsecutivePoints(0);
+  setSetContext(1);
+  setSituation(1);
+  setFlags({ bodyLanguage: false, umpireDispute: false, thirdSetCollapse: false, bpCascade: false, lostFirstSetBagel: false });
+  setScore(0);
+  setAlertLevel('none');
+  setPrediction('');
+}} style={{ fontSize: '12px', color: '#E24B4A', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 12px', marginLeft: '12px' }}>
+  Reset match
+</button>
       <input 
   type="text"
   placeholder="Opponent name"
