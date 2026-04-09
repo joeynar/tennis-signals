@@ -291,6 +291,10 @@ if (secondServePressure) gamesScore += 12;
   setScore(0);
   setAlertLevel('none');
   setPrediction('');
+  setSet1ServePct(65);
+setSet2ServePct(65);
+setGamesLostRow(0);
+setSecondServePressure(false);
 }} style={{ fontSize: '12px', color: '#E24B4A', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 12px', marginLeft: '12px' }}>
   Reset match
 </button>
