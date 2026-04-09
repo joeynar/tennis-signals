@@ -19,7 +19,9 @@ function MatchTracker({ player, onBack }) {
   const [score, setScore] = useState(0);
   const [alertLevel, setAlertLevel] = useState('none');
   const [prediction, setPrediction] = useState('');
-  const [opponent, setOpponent] = useState('');
+  const [tournament, setTournament] = useState('');
+const [currentScore, setCurrentScore] = useState('');
+const [matchContext, setMatchContext] = useState('');
   const [set1ServePct, setSet1ServePct] = useState(65);
 const [set2ServePct, setSet2ServePct] = useState(65);
 const [gamesLostRow, setGamesLostRow] = useState(0);
@@ -173,6 +175,9 @@ if (secondServePressure) gamesScore += 12;
   
   CURRENT MATCH STATE:
   - Opponent: ${opponent || 'Unknown'}
+- Tournament: ${tournament || 'Unknown'}
+- Current score: ${currentScore || 'Not specified'}
+- Match context: ${matchContext || 'None provided'}
   - Current first serve %: ${servePct}% (${thresh ? (servePct < thresh.signal_threshold ? 'BELOW SIGNAL THRESHOLD' : servePct < thresh.warn_threshold ? 'IN WATCH ZONE' : 'NORMAL') : ''})
   - Double faults this set: ${doubleFaults}
   - Break points missed: ${bpMissed}
@@ -294,7 +299,9 @@ if (secondServePressure) gamesScore += 12;
   setSet1ServePct(65);
 setSet2ServePct(65);
 setGamesLostRow(0);
-setSecondServePressure(false);
+setTournament('');
+setCurrentScore('');
+setMatchContext('');
 }} style={{ fontSize: '12px', color: '#E24B4A', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 12px', marginLeft: '12px' }}>
   Reset match
 </button>
@@ -304,6 +311,27 @@ setSecondServePressure(false);
   value={opponent}
   onChange={e => setOpponent(e.target.value)}
   style={{ width: '100%', marginBottom: '12px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' }}
+/>
+<input
+  type="text"
+  placeholder="Tournament (e.g. Monte Carlo Masters R16)"
+  value={tournament}
+  onChange={e => setTournament(e.target.value)}
+  style={{ width: '100%', marginBottom: '8px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' }}
+/>
+<input
+  type="text"
+  placeholder="Current score (e.g. 4-3, 30-15)"
+  value={currentScore}
+  onChange={e => setCurrentScore(e.target.value)}
+  style={{ width: '100%', marginBottom: '8px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' }}
+/>
+<textarea
+  placeholder="Match context (e.g. Hurkacz back from knee surgery, won vs Darderi and Marozsan. Vacherot beat Musetti R2 at home crowd)"
+  value={matchContext}
+  onChange={e => setMatchContext(e.target.value)}
+  rows={3}
+  style={{ width: '100%', marginBottom: '12px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box', resize: 'none' }}
 />
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
