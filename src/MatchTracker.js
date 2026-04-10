@@ -19,6 +19,7 @@ function MatchTracker({ player, onBack }) {
   const [score, setScore] = useState(0);
   const [alertLevel, setAlertLevel] = useState('none');
   const [prediction, setPrediction] = useState('');
+  const [opponent, setOpponent] = useState('');
   const [tournament, setTournament] = useState('');
 const [currentScore, setCurrentScore] = useState('');
 const [matchContext, setMatchContext] = useState('');
