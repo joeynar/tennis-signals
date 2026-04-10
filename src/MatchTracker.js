@@ -21,8 +21,12 @@ function MatchTracker({ player, onBack }) {
   const [prediction, setPrediction] = useState('');
   const [opponent, setOpponent] = useState('');
   const [tournament, setTournament] = useState('');
-  const [scorePlayer, setScorePlayer] = useState(0);
-  const [scoreOpponent, setScoreOpponent] = useState(0);
+  const [setsPlayer, setSetsPlayer] = useState(0);
+const [setsOpponent, setSetsOpponent] = useState(0);
+const [gamesPlayer, setGamesPlayer] = useState(0);
+const [gamesOpponent, setGamesOpponent] = useState(0);
+const [pointsPlayer, setPointsPlayer] = useState(0);
+const [pointsOpponent, setPointsOpponent] = useState(0);
 const [matchContext, setMatchContext] = useState('');
   const [set1ServePct, setSet1ServePct] = useState(65);
 const [set2ServePct, setSet2ServePct] = useState(65);
@@ -178,7 +182,7 @@ if (secondServePressure) gamesScore += 12;
   CURRENT MATCH STATE:
   - Opponent: ${opponent || 'Unknown'}
 - Tournament: ${tournament || 'Unknown'}
-- Current score: ${scorePlayer}-${scoreOpponent} (player-opponent)
+- Current score: Sets ${setsPlayer}-${setsOpponent} | Games ${gamesPlayer}-${gamesOpponent} | Points ${['0','15','30','40','AD'][pointsPlayer]}-${['0','15','30','40','AD'][pointsOpponent]}
 - Match context: ${matchContext || 'None provided'}
   - Current first serve %: ${servePct}% (${thresh ? (servePct < thresh.signal_threshold ? 'BELOW SIGNAL THRESHOLD' : servePct < thresh.warn_threshold ? 'IN WATCH ZONE' : 'NORMAL') : ''})
   - Double faults this set: ${doubleFaults}
@@ -302,8 +306,12 @@ if (secondServePressure) gamesScore += 12;
 setSet2ServePct(65);
 setGamesLostRow(0);
 setTournament('');
-setScorePlayer(0);
-setScoreOpponent(0);
+setSetsPlayer(0);
+setSetsOpponent(0);
+setGamesPlayer(0);
+setGamesOpponent(0);
+setPointsPlayer(0);
+setPointsOpponent(0);
 setMatchContext('');
 }} style={{ fontSize: '12px', color: '#E24B4A', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 12px', marginLeft: '12px' }}>
   Reset match
@@ -322,18 +330,38 @@ setMatchContext('');
   onChange={e => setTournament(e.target.value)}
   style={{ width: '100%', marginBottom: '8px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' }}
 />
-<div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-  <span style={{ fontSize: '13px', color: '#888', whiteSpace: 'nowrap' }}>Score:</span>
+<div style={{ marginBottom: '12px', background: '#f8f9fa', borderRadius: '10px', padding: '12px' }}>
+  <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Score</div>
+  
+  {[['Sets', setsPlayer, setSetsPlayer, setsOpponent, setSetsOpponent, 3],
+    ['Games', gamesPlayer, setGamesPlayer, gamesOpponent, setGamesOpponent, 7]].map(([label, p, setP, o, setO, max]) => (
+    <div key={label} style={{ display: 'flex', alignItems: 'center', marginBottom: '8px', gap: '8px' }}>
+      <span style={{ fontSize: '12px', color: '#888', width: '45px' }}>{label}</span>
+      <button onClick={() => setP(Math.max(0, p-1))} style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid #ddd', cursor: 'pointer', background: 'white' }}>−</button>
+      <span style={{ fontSize: '18px', fontWeight: '600', minWidth: '16px', textAlign: 'center' }}>{p}</span>
+      <span style={{ fontSize: '14px', color: '#ccc' }}>—</span>
+      <span style={{ fontSize: '18px', fontWeight: '600', minWidth: '16px', textAlign: 'center' }}>{o}</span>
+      <button onClick={() => setO(Math.max(0, o-1))} style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid #ddd', cursor: 'pointer', background: 'white' }}>−</button>
+      <button onClick={() => setO(Math.min(max, o+1))} style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid #ddd', cursor: 'pointer', background: 'white' }}>+</button>
+      <button onClick={() => setP(Math.min(max, p+1))} style={{ padding: '2px 8px', borderRadius: '4px', border: '1px solid #ddd', cursor: 'pointer', background: 'white' }}>+</button>
+    </div>
+  ))}
+
   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-    <button onClick={() => setScorePlayer(Math.max(0, scorePlayer-1))} style={{ padding: '4px 10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer' }}>−</button>
-    <span style={{ fontSize: '20px', fontWeight: '600', minWidth: '20px', textAlign: 'center' }}>{scorePlayer}</span>
-    <button onClick={() => setScorePlayer(scorePlayer+1)} style={{ padding: '4px 10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer' }}>+</button>
-  </div>
-  <span style={{ fontSize: '20px', fontWeight: '300' }}>—</span>
-  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-    <button onClick={() => setScoreOpponent(Math.max(0, scoreOpponent-1))} style={{ padding: '4px 10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer' }}>−</button>
-    <span style={{ fontSize: '20px', fontWeight: '600', minWidth: '20px', textAlign: 'center' }}>{scoreOpponent}</span>
-    <button onClick={() => setScoreOpponent(scoreOpponent+1)} style={{ padding: '4px 10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer' }}>+</button>
+    <span style={{ fontSize: '12px', color: '#888', width: '45px' }}>Points</span>
+    {['0','15','30','40','AD'].map(p => (
+      <button key={p} onClick={() => setPointsPlayer(['0','15','30','40','AD'].indexOf(p))}
+        style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer', fontSize: '12px', background: pointsPlayer === ['0','15','30','40','AD'].indexOf(p) ? '#333' : 'white', color: pointsPlayer === ['0','15','30','40','AD'].indexOf(p) ? 'white' : '#333' }}>
+        {p}
+      </button>
+    ))}
+    <span style={{ fontSize: '14px', color: '#ccc' }}>—</span>
+    {['0','15','30','40','AD'].map(p => (
+      <button key={p} onClick={() => setPointsOpponent(['0','15','30','40','AD'].indexOf(p))}
+        style={{ padding: '4px 8px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer', fontSize: '12px', background: pointsOpponent === ['0','15','30','40','AD'].indexOf(p) ? '#333' : 'white', color: pointsOpponent === ['0','15','30','40','AD'].indexOf(p) ? 'white' : '#333' }}>
+        {p}
+      </button>
+    ))}
   </div>
 </div>
 <textarea
