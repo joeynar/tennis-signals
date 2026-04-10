@@ -40,7 +40,7 @@ const [opponentProfile, setOpponentProfile] = useState(null);
 
   useEffect(() => {
     calculateScore();
-  }, [servePct, doubleFaults, bpMissed, consecutivePoints, setContext, situation, flags, thresholds]);
+  }, [servePct, doubleFaults, bpMissed, consecutivePoints, setContext, situation, flags, thresholds, set1ServePct, set2ServePct, gamesLostRow, secondServePressure]);
 
   async function fetchThresholds() {
     const { data } = await supabase
