@@ -32,6 +32,7 @@ const [matchContext, setMatchContext] = useState('');
 const [set2ServePct, setSet2ServePct] = useState(65);
 const [gamesLostRow, setGamesLostRow] = useState(0);
 const [secondServePressure, setSecondServePressure] = useState(false);
+const [opponentProfile, setOpponentProfile] = useState(null);
 
   useEffect(() => {
     fetchThresholds();
@@ -49,6 +50,16 @@ const [secondServePressure, setSecondServePressure] = useState(false);
       .eq('surface', 'clay')
       .single();
     if (data) setThresholds(data);
+  }
+  async function fetchOpponentProfile(name) {
+    if (!name || name.length < 3) return;
+    const { data } = await supabase
+      .from('players')
+      .select('*')
+      .ilike('name', `%${name}%`)
+      .single();
+    if (data) setOpponentProfile(data);
+    else setOpponentProfile(null);
   }
 
   function toggleFlag(key) {
@@ -184,6 +195,7 @@ if (secondServePressure) gamesScore += 12;
 - Tournament: ${tournament || 'Unknown'}
 - Current score: Sets ${setsPlayer}-${setsOpponent} | Games ${gamesPlayer}-${gamesOpponent} | Points ${['0','15','30','40','AD'][pointsPlayer]}-${['0','15','30','40','AD'][pointsOpponent]}
 - Match context: ${matchContext || 'None provided'}
+- Opponent profile: ${opponentProfile ? `${opponentProfile.name} (ranked ${opponentProfile.ranking}) — ${opponentProfile.style_notes}. Collapse triggers: ${JSON.stringify(opponentProfile.collapse_triggers)}` : 'Not in database'}
   - Current first serve %: ${servePct}% (${thresh ? (servePct < thresh.signal_threshold ? 'BELOW SIGNAL THRESHOLD' : servePct < thresh.warn_threshold ? 'IN WATCH ZONE' : 'NORMAL') : ''})
   - Double faults this set: ${doubleFaults}
   - Break points missed: ${bpMissed}
@@ -320,7 +332,7 @@ setMatchContext('');
   type="text"
   placeholder="Opponent name"
   value={opponent}
-  onChange={e => setOpponent(e.target.value)}
+  onChange={e => { setOpponent(e.target.value); fetchOpponentProfile(e.target.value); }}
   style={{ width: '100%', marginBottom: '12px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' }}
 />
 <input
