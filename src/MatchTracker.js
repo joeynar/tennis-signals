@@ -21,7 +21,8 @@ function MatchTracker({ player, onBack }) {
   const [prediction, setPrediction] = useState('');
   const [opponent, setOpponent] = useState('');
   const [tournament, setTournament] = useState('');
-const [currentScore, setCurrentScore] = useState('');
+  const [scorePlayer, setScorePlayer] = useState(0);
+  const [scoreOpponent, setScoreOpponent] = useState(0);
 const [matchContext, setMatchContext] = useState('');
   const [set1ServePct, setSet1ServePct] = useState(65);
 const [set2ServePct, setSet2ServePct] = useState(65);
@@ -177,7 +178,7 @@ if (secondServePressure) gamesScore += 12;
   CURRENT MATCH STATE:
   - Opponent: ${opponent || 'Unknown'}
 - Tournament: ${tournament || 'Unknown'}
-- Current score: ${currentScore || 'Not specified'}
+- Current score: ${scorePlayer}-${scoreOpponent} (player-opponent)
 - Match context: ${matchContext || 'None provided'}
   - Current first serve %: ${servePct}% (${thresh ? (servePct < thresh.signal_threshold ? 'BELOW SIGNAL THRESHOLD' : servePct < thresh.warn_threshold ? 'IN WATCH ZONE' : 'NORMAL') : ''})
   - Double faults this set: ${doubleFaults}
@@ -301,7 +302,8 @@ if (secondServePressure) gamesScore += 12;
 setSet2ServePct(65);
 setGamesLostRow(0);
 setTournament('');
-setCurrentScore('');
+setScorePlayer(0);
+setScoreOpponent(0);
 setMatchContext('');
 }} style={{ fontSize: '12px', color: '#E24B4A', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 12px', marginLeft: '12px' }}>
   Reset match
@@ -320,13 +322,20 @@ setMatchContext('');
   onChange={e => setTournament(e.target.value)}
   style={{ width: '100%', marginBottom: '8px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' }}
 />
-<input
-  type="text"
-  placeholder="Current score (e.g. 4-3, 30-15)"
-  value={currentScore}
-  onChange={e => setCurrentScore(e.target.value)}
-  style={{ width: '100%', marginBottom: '8px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' }}
-/>
+<div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+  <span style={{ fontSize: '13px', color: '#888', whiteSpace: 'nowrap' }}>Score:</span>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <button onClick={() => setScorePlayer(Math.max(0, scorePlayer-1))} style={{ padding: '4px 10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer' }}>−</button>
+    <span style={{ fontSize: '20px', fontWeight: '600', minWidth: '20px', textAlign: 'center' }}>{scorePlayer}</span>
+    <button onClick={() => setScorePlayer(scorePlayer+1)} style={{ padding: '4px 10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer' }}>+</button>
+  </div>
+  <span style={{ fontSize: '20px', fontWeight: '300' }}>—</span>
+  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+    <button onClick={() => setScoreOpponent(Math.max(0, scoreOpponent-1))} style={{ padding: '4px 10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer' }}>−</button>
+    <span style={{ fontSize: '20px', fontWeight: '600', minWidth: '20px', textAlign: 'center' }}>{scoreOpponent}</span>
+    <button onClick={() => setScoreOpponent(scoreOpponent+1)} style={{ padding: '4px 10px', fontSize: '16px', borderRadius: '6px', border: '1px solid #ddd', cursor: 'pointer' }}>+</button>
+  </div>
+</div>
 <textarea
   placeholder="Match context (e.g. Hurkacz back from knee surgery, won vs Darderi and Marozsan. Vacherot beat Musetti R2 at home crowd)"
   value={matchContext}
