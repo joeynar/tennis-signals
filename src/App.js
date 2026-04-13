@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import MatchTracker from './MatchTracker';
+import H2HUploader from './H2HUploader'; 
 
 function App() {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
-
+  const [showH2H, setShowH2H] = useState(false);
   useEffect(() => {
     fetchPlayers();
   }, []);
@@ -20,7 +21,9 @@ function App() {
     else setPlayers(data);
     setLoading(false);
   }
-
+if (showH2H) {
+  return <H2HUploader onBack={() => setShowH2H(false)} />;
+}
   if (selectedPlayer) {
     return <MatchTracker player={selectedPlayer} onBack={() => setSelectedPlayer(null)} />;
   }
@@ -29,6 +32,16 @@ function App() {
     <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '500px', margin: '0 auto' }}>
       <h1 style={{ fontSize: '22px', fontWeight: '500', marginBottom: '6px' }}>Tennis Signals</h1>
       <p style={{ fontSize: '13px', color: '#888', marginBottom: '20px' }}>Select a player to open live match tracker</p>
+      <button
+  onClick={() => setShowH2H(true)}
+  style={{
+    width: '100%', padding: '14px', borderRadius: 8, marginBottom: 24,
+    background: '#1a1a2e', color: 'white', border: 'none',
+    fontSize: 15, fontWeight: 600, cursor: 'pointer'
+  }}
+>
+  + Upload H2H Research
+</button>
       {loading ? (
         <p>Loading...</p>
       ) : (
