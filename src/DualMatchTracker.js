@@ -308,19 +308,15 @@ const [tournamentProfile, setTournamentProfile] = useState(null);
     if (!playerA || !playerB) return;
     setLoadingPrediction(true);
     setPrediction('');
+const tournamentContext = tournamentProfile
+  ? `Surface: ${tournamentProfile.surface} | Speed: ${tournamentProfile.surface_speed} | Conditions: ${tournamentProfile.conditions_narrative} | Upgrade: ${tournamentProfile.upgrade_profile} | Downgrade: ${tournamentProfile.downgrade_profile} | Live triggers: ${tournamentProfile.live_triggers}`
+  : 'No tournament profile loaded';
 
-    const prompt = `
+const prompt = `
 You are a live tennis betting analyst. Analyze both players in this match and provide a dual assessment.
 
 TOURNAMENT: ${tournament || 'Unknown'}
-${tournamentProfile ? `TOURNAMENT CONTEXT:
-- Surface: ${tournamentProfile.surface} | Speed: ${tournamentProfile.surface_speed} | Level: ${tournamentProfile.atp_level}
-- Conditions: ${tournamentProfile.conditions_narrative}
-- Upgrade profile: ${tournamentProfile.upgrade_profile}
-- Downgrade profile: ${tournamentProfile.downgrade_profile}
-- Live triggers: ${tournamentProfile.live_triggers}
-- Weather overlay: ${tournamentProfile.weather_overlay}
-- Historical notes: ${tournamentProfile.historical_notes}` : 'No tournament profile loaded'}
+TOURNAMENT CONTEXT: ${tournamentContext}
 
 --- PLAYER A: ${playerA.name} ---
 Ranking: ${playerA.ranking} | Nationality: ${playerA.nationality}
