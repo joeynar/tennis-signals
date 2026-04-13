@@ -228,11 +228,20 @@ export default function DualMatchTracker({ onBack }) {
   const [loadingPrediction, setLoadingPrediction] = useState(false);
   const [matchesA, setMatchesA] = useState([]);
   const [matchesB, setMatchesB] = useState([]);
+  const [tournamentOptions, setTournamentOptions] = useState([]);
+const [tournamentProfile, setTournamentProfile] = useState(null);
 
   // Load all players on mount
   useEffect(() => {
     supabase.from('players').select('id, name, ranking, nationality, hand, style_notes, collapse_triggers')
       .order('name').then(({ data }) => { if (data) setPlayers(data); });
+  }, []);
+  useEffect(() => {
+    supabase
+      .from('tournament_profiles')
+      .select('id, tournament_name, year')
+      .order('tournament_name')
+      .then(({ data }) => { if (data) setTournamentOptions(data); });
   }, []);
 
   // Load Player A data when selected
@@ -304,6 +313,14 @@ export default function DualMatchTracker({ onBack }) {
 You are a live tennis betting analyst. Analyze both players in this match and provide a dual assessment.
 
 TOURNAMENT: ${tournament || 'Unknown'}
+${tournamentProfile ? `TOURNAMENT CONTEXT:
+- Surface: ${tournamentProfile.surface} | Speed: ${tournamentProfile.surface_speed} | Level: ${tournamentProfile.atp_level}
+- Conditions: ${tournamentProfile.conditions_narrative}
+- Upgrade profile: ${tournamentProfile.upgrade_profile}
+- Downgrade profile: ${tournamentProfile.downgrade_profile}
+- Live triggers: ${tournamentProfile.live_triggers}
+- Weather overlay: ${tournamentProfile.weather_overlay}
+- Historical notes: ${tournamentProfile.historical_notes}` : 'No tournament profile loaded'}
 
 --- PLAYER A: ${playerA.name} ---
 Ranking: ${playerA.ranking} | Nationality: ${playerA.nationality}
@@ -399,16 +416,46 @@ Provide three sections:
       </div>
 
       {/* Tournament input */}
-      <input
-        value={tournament}
-        onChange={e => setTournament(e.target.value)}
-        placeholder="Tournament (e.g. Monte Carlo Masters QF)"
-        style={{
-          width: '100%', padding: '12px', borderRadius: 8, border: '1px solid #ddd',
-          fontSize: 14, marginBottom: 20, boxSizing: 'border-box'
-        }}
-      />
+      <select
+  value={tournament}
+  onChange={async e => {
+    setTournament(e.target.value);
+    const { data } = await supabase
+      .from('tournament_profiles')
+      .select('*')
+      .ilike('tournament_name', `%${e.target.value}%`)
+      .maybeSingle();
+    setTournamentProfile(data || null);
+  }}
+  style={{
+    width: '100%', padding: '12px', borderRadius: 8, border: '1px solid #ddd',
+    fontSize: 14, marginBottom: 8, boxSizing: 'border-box'
+  }}
+>
+  <option value=''>Select tournament...</option>
+  {tournamentOptions.map(t => (
+    <option key={t.id} value={t.tournament_name}>
+      {t.tournament_name} {t.year}
+    </option>
+  ))}
+</select>
 
+{tournamentProfile && (
+  <div style={{
+    padding: '10px 14px', borderRadius: 8, marginBottom: 12,
+    background: '#e8f5e9', border: '1px solid #a5d6a7'
+  }}>
+    <div style={{ fontSize: 12, fontWeight: 700, color: '#2e7d32', marginBottom: 4 }}>
+      ✅ {tournamentProfile.tournament_name} profile loaded
+    </div>
+    <div style={{ fontSize: 11, color: '#388e3c', lineHeight: 1.5 }}>
+      {tournamentProfile.surface} · Speed {tournamentProfile.surface_speed} · {tournamentProfile.atp_level}
+    </div>
+    <div style={{ fontSize: 11, color: '#388e3c', lineHeight: 1.5, marginTop: 2 }}>
+      {tournamentProfile.conditions_narrative}
+    </div>
+  </div>
+)}
       {/* Player selectors */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
         <div>
