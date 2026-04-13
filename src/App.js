@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from './supabase';
 import MatchTracker from './MatchTracker';
 import H2HUploader from './H2HUploader'; 
+import DualMatchTracker from './DualMatchTracker';
 
 function App() {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [showH2H, setShowH2H] = useState(false);
+  const [showDual, setShowDual] = useState(false);
+
   useEffect(() => {
     fetchPlayers();
   }, []);
@@ -21,7 +24,10 @@ function App() {
     else setPlayers(data);
     setLoading(false);
   }
-if (showH2H) {
+  if (showDual) {
+    return <DualMatchTracker onBack={() => setShowDual(false)} />;
+  }
+  if (showH2H) {
   return <H2HUploader onBack={() => setShowH2H(false)} />;
 }
   if (selectedPlayer) {
@@ -42,6 +48,17 @@ if (showH2H) {
 >
   + Upload H2H Research
 </button>
+<button
+  onClick={() => setShowDual(true)}
+  style={{
+    width: '100%', padding: '14px', borderRadius: 8, marginBottom: 24,
+    background: '#e53935', color: 'white', border: 'none',
+    fontSize: 15, fontWeight: 600, cursor: 'pointer'
+  }}
+>
+  ⚡ Dual Match Analysis
+</button>
+
       {loading ? (
         <p>Loading...</p>
       ) : (
