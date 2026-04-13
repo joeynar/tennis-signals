@@ -32,7 +32,8 @@ const [matchContext, setMatchContext] = useState('');
 const [set2ServePct, setSet2ServePct] = useState(65);
 const [gamesLostRow, setGamesLostRow] = useState(0);
 const [secondServePressure, setSecondServePressure] = useState(false);
-const [opponentProfile, setOpponentProfile] = useState(null);
+const [tournamentProfile, setTournamentProfile] = useState(null);
+
 
   useEffect(() => {
     fetchThresholds();
@@ -50,6 +51,16 @@ const [opponentProfile, setOpponentProfile] = useState(null);
       .eq('surface', 'clay')
       .single();
     if (data) setThresholds(data);
+  }
+  async function fetchTournamentProfile(name) {
+    if (!name || name.length < 3) return;
+    const { data } = await supabase
+      .from('tournament_profiles')
+      .select('*')
+      .ilike('tournament_name', `%${name}%`)
+      .maybeSingle();
+    if (data) setTournamentProfile(data);
+    else setTournamentProfile(null);
   }
   async function fetchOpponentProfile(name) {
     if (!name || name.length < 3) return;
@@ -194,7 +205,7 @@ if (secondServePressure) gamesScore += 12;
   - Opponent: ${opponent || 'Unknown'}
 - Tournament: ${tournament || 'Unknown'}
 - Current score: Sets ${setsPlayer}-${setsOpponent} | Games ${gamesPlayer}-${gamesOpponent} | Points ${['0','15','30','40','AD'][pointsPlayer]}-${['0','15','30','40','AD'][pointsOpponent]}
-- Match context: ${matchContext || 'None provided'}
+- Tournament profile: ${tournamentProfile ? `Surface speed: ${tournamentProfile.surface_speed} | ${tournamentProfile.conditions_narrative} | Upgrade: ${tournamentProfile.upgrade_profile} | Downgrade: ${tournamentProfile.downgrade_profile} | Live triggers: ${tournamentProfile.live_triggers} | Weather: ${tournamentProfile.weather_overlay}` : 'No tournament profile loaded'}
 - Opponent profile: ${opponentProfile ? `${opponentProfile.name} (ranked ${opponentProfile.ranking}) — ${opponentProfile.style_notes}. Collapse triggers: ${JSON.stringify(opponentProfile.collapse_triggers)}` : 'Not in database'}
   - Current first serve %: ${servePct}% (${thresh ? (servePct < thresh.signal_threshold ? 'BELOW SIGNAL THRESHOLD' : servePct < thresh.warn_threshold ? 'IN WATCH ZONE' : 'NORMAL') : ''})
   - Double faults this set: ${doubleFaults}
@@ -339,7 +350,7 @@ setMatchContext('');
   type="text"
   placeholder="Tournament (e.g. Monte Carlo Masters R16)"
   value={tournament}
-  onChange={e => setTournament(e.target.value)}
+  onChange={e => { setTournament(e.target.value); fetchTournamentProfile(e.target.value); }}
   style={{ width: '100%', marginBottom: '8px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' }}
 />
 <div style={{ marginBottom: '12px', background: '#f8f9fa', borderRadius: '10px', padding: '12px' }}>
@@ -376,6 +387,22 @@ setMatchContext('');
     ))}
   </div>
 </div>
+{tournamentProfile && (
+  <div style={{
+    padding: '10px 14px', borderRadius: 8, marginBottom: 12,
+    background: '#e8f5e9', border: '1px solid #a5d6a7'
+  }}>
+    <div style={{ fontSize: 12, fontWeight: 700, color: '#2e7d32', marginBottom: 4 }}>
+      ✅ {tournamentProfile.tournament_name} profile loaded
+    </div>
+    <div style={{ fontSize: 11, color: '#388e3c', lineHeight: 1.5 }}>
+      {tournamentProfile.surface} · Speed {tournamentProfile.surface_speed} · {tournamentProfile.atp_level}
+    </div>
+    <div style={{ fontSize: 11, color: '#388e3c', lineHeight: 1.5, marginTop: 2 }}>
+      {tournamentProfile.conditions_narrative}
+    </div>
+  </div>
+)}
 <textarea
   placeholder="Match context (e.g. Hurkacz back from knee surgery, won vs Darderi and Marozsan. Vacherot beat Musetti R2 at home crowd)"
   value={matchContext}
