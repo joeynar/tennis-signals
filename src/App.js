@@ -3,6 +3,7 @@ import { supabase } from './supabase';
 import MatchTracker from './MatchTracker';
 import H2HUploader from './H2HUploader'; 
 import DualMatchTracker from './DualMatchTracker';
+import TournamentUploader from './TournamentUploader';
 
 function App() {
   const [players, setPlayers] = useState([]);
@@ -10,6 +11,7 @@ function App() {
   const [selectedPlayer, setSelectedPlayer] = useState(null);
   const [showH2H, setShowH2H] = useState(false);
   const [showDual, setShowDual] = useState(false);
+  const [showTournament, setShowTournament] = useState(false);
 
   useEffect(() => {
     fetchPlayers();
@@ -23,6 +25,9 @@ function App() {
     if (error) console.error('Error:', error);
     else setPlayers(data);
     setLoading(false);
+  }
+  if (showTournament) {
+    return <TournamentUploader onBack={() => setShowTournament(false)} />;
   }
   if (showDual) {
     return <DualMatchTracker onBack={() => setShowDual(false)} />;
@@ -57,6 +62,16 @@ function App() {
   }}
 >
   ⚡ Dual Match Analysis
+</button>
+<button
+  onClick={() => setShowTournament(true)}
+  style={{
+    width: '100%', padding: '14px', borderRadius: 8, marginBottom: 24,
+    background: '#2e7d32', color: 'white', border: 'none',
+    fontSize: 15, fontWeight: 600, cursor: 'pointer'
+  }}
+>
+  🏆 Upload Tournament Profile
 </button>
 
       {loading ? (
