@@ -32,12 +32,19 @@ const [matchContext, setMatchContext] = useState('');
 const [set2ServePct, setSet2ServePct] = useState(65);
 const [gamesLostRow, setGamesLostRow] = useState(0);
 const [secondServePressure, setSecondServePressure] = useState(false);
-const [tournamentProfile, setTournamentProfile] = useState(null);
+const [tournamentOptions, setTournamentOptions] = useState([]);
 
 
   useEffect(() => {
     fetchThresholds();
   }, [player]);
+  useEffect(() => {
+    supabase
+      .from('tournament_profiles')
+      .select('id, tournament_name, year')
+      .order('tournament_name')
+      .then(({ data }) => { if (data) setTournamentOptions(data); });
+  }, []);
 
   useEffect(() => {
     calculateScore();
@@ -346,13 +353,21 @@ setMatchContext('');
   onChange={e => { setOpponent(e.target.value); fetchOpponentProfile(e.target.value); }}
   style={{ width: '100%', marginBottom: '12px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' }}
 />
-<input
-  type="text"
-  placeholder="Tournament (e.g. Monte Carlo Masters R16)"
+<select
   value={tournament}
-  onChange={e => { setTournament(e.target.value); fetchTournamentProfile(e.target.value); }}
+  onChange={e => {
+    setTournament(e.target.value);
+    fetchTournamentProfile(e.target.value);
+  }}
   style={{ width: '100%', marginBottom: '8px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' }}
-/>
+>
+  <option value=''>Select tournament...</option>
+  {tournamentOptions.map(t => (
+    <option key={t.id} value={t.tournament_name}>
+      {t.tournament_name} {t.year}
+    </option>
+  ))}
+</select>
 <div style={{ marginBottom: '12px', background: '#f8f9fa', borderRadius: '10px', padding: '12px' }}>
   <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Score</div>
   
