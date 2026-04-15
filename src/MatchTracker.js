@@ -34,6 +34,7 @@ const [gamesLostRow, setGamesLostRow] = useState(0);
 const [secondServePressure, setSecondServePressure] = useState(false);
 const [tournamentOptions, setTournamentOptions] = useState([]);
 const [tournamentProfile, setTournamentProfile] = useState(null);
+const [opponentProfile, setOpponentProfile] = useState(null);
 
 
   useEffect(() => {
