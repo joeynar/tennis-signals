@@ -33,6 +33,7 @@ const [set2ServePct, setSet2ServePct] = useState(65);
 const [gamesLostRow, setGamesLostRow] = useState(0);
 const [secondServePressure, setSecondServePressure] = useState(false);
 const [tournamentOptions, setTournamentOptions] = useState([]);
+const [tournamentProfile, setTournamentProfile] = useState(null);
 
 
   useEffect(() => {
