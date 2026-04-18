@@ -87,7 +87,10 @@ ${research}
 
       const data = await response.json();
       const rawText = data.content[0].text.trim();
-      const structured = JSON.parse(rawText);
+const clean = rawText.replace(/```json|```/g, '').trim();
+const structured = JSON.parse(clean);
+
+      
 
       setStatus('Research structured. Saving to database...');
 
@@ -99,7 +102,7 @@ ${research}
           `and(player_a_id.eq.${playerA},player_b_id.eq.${playerB}),` +
           `and(player_a_id.eq.${playerB},player_b_id.eq.${playerA})`
         )
-        .single();
+        .maybeSingle();
 
       if (existing) {
         // Update existing record
