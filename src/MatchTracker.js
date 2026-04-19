@@ -34,6 +34,7 @@ const [gamesLostRow, setGamesLostRow] = useState(0);
 const [secondServePressure, setSecondServePressure] = useState(false);
 const [tournamentOptions, setTournamentOptions] = useState([]);
 const [tournamentProfile, setTournamentProfile] = useState(null);
+const [prematchResearch, setPrematchResearch] = useState(null);
 const [opponentProfile, setOpponentProfile] = useState(null);
 const [whoServesFirst, setWhoServesFirst] = useState('player'); // 'player' or 'opponent'
 const [breakHistory, setBreakHistory] = useState([]); // array of {set, gameNumber, brokenPlayer, score}
@@ -123,6 +124,35 @@ const [prevGames, setPrevGames] = useState({ player: 0, opponent: 0, set: 1 });
       .maybeSingle();
     if (data) setTournamentProfile(data);
     else setTournamentProfile(null);
+  }
+  async function fetchPrematchResearch(opponentName) {
+    if (!opponentName || opponentName.length < 3 || !player?.id) return;
+    
+    // Find opponent in players table first
+    const { data: opp } = await supabase
+      .from('players')
+      .select('id')
+      .ilike('name', `%${opponentName}%`)
+      .maybeSingle();
+    
+    if (!opp) {
+      setPrematchResearch(null);
+      return;
+    }
+    
+    // Look for pre-match research between these two players (today or recent)
+    const { data } = await supabase
+      .from('prematch_research')
+      .select('*')
+      .or(
+        `and(player_a_id.eq.${player.id},player_b_id.eq.${opp.id}),` +
+        `and(player_a_id.eq.${opp.id},player_b_id.eq.${player.id})`
+      )
+      .order('match_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    setPrematchResearch(data || null);
   }
   async function fetchOpponentProfile(name) {
     if (!name || name.length < 3) return;
@@ -268,6 +298,7 @@ if (secondServePressure) gamesScore += 12;
 - Tournament: ${tournament || 'Unknown'}
 - Current score: Sets ${setsPlayer}-${setsOpponent} | Games ${gamesPlayer}-${gamesOpponent} | Points ${['0','15','30','40','AD'][pointsPlayer]}-${['0','15','30','40','AD'][pointsOpponent]}
 - Tournament profile: ${tournamentProfile ? `Surface speed: ${tournamentProfile.surface_speed} | ${tournamentProfile.conditions_narrative} | Upgrade: ${tournamentProfile.upgrade_profile} | Downgrade: ${tournamentProfile.downgrade_profile} | Live triggers: ${tournamentProfile.live_triggers} | Weather: ${tournamentProfile.weather_overlay}` : 'No tournament profile loaded'}
+- PRE-MATCH RESEARCH: ${prematchResearch ? `MODEL VERDICT: ${prematchResearch.model_verdict}. Model probability: ${player.name} ${prematchResearch.model_prob_a ? Math.round(prematchResearch.model_prob_a * 100) : '?'}% vs Market ${prematchResearch.market_prob_a ? Math.round(prematchResearch.market_prob_a * 100) : '?'}% (${prematchResearch.market_error_pp}pp error). Primary bet: ${prematchResearch.primary_bet}. Live triggers to watch: ${prematchResearch.live_triggers}. Form summary - ${player.name}: ${prematchResearch.player_a_form_summary}. Opponent form: ${prematchResearch.player_b_form_summary}` : 'No pre-match research loaded'}
 - Opponent profile: ${opponentProfile ? `${opponentProfile.name} (ranked ${opponentProfile.ranking}) — ${opponentProfile.style_notes}. Collapse triggers: ${JSON.stringify(opponentProfile.collapse_triggers)}` : 'Not in database'}
   - Current first serve %: ${servePct}% (${thresh ? (servePct < thresh.signal_threshold ? 'BELOW SIGNAL THRESHOLD' : servePct < thresh.warn_threshold ? 'IN WATCH ZONE' : 'NORMAL') : ''})
   - Double faults this set: ${doubleFaults}
@@ -426,7 +457,7 @@ setPrevGames({ player: 0, opponent: 0, set: 1 });
   type="text"
   placeholder="Opponent name"
   value={opponent}
-  onChange={e => { setOpponent(e.target.value); fetchOpponentProfile(e.target.value); }}
+  onChange={e => { setOpponent(e.target.value); fetchOpponentProfile(e.target.value); fetchPrematchResearch(e.target.value); }}
   style={{ width: '100%', marginBottom: '12px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box' }}
 />
 <select
@@ -478,6 +509,27 @@ setPrevGames({ player: 0, opponent: 0, set: 1 });
     ))}
   </div>
 </div>
+{prematchResearch && (
+  <div style={{
+    padding: '12px 14px', borderRadius: 8, marginBottom: 12,
+    background: '#f3e5f5', border: '1px solid #ce93d8'
+  }}>
+    <div style={{ fontSize: 12, fontWeight: 700, color: '#7b1fa2', marginBottom: 6 }}>
+      📊 Pre-match research loaded
+    </div>
+    <div style={{ fontSize: 11, color: '#6a1b9a', lineHeight: 1.5 }}>
+      <strong>Verdict:</strong> {prematchResearch.model_verdict}
+    </div>
+    <div style={{ fontSize: 11, color: '#6a1b9a', lineHeight: 1.5, marginTop: 4 }}>
+      <strong>Primary bet:</strong> {prematchResearch.primary_bet} ({prematchResearch.primary_ev_pct}% EV)
+    </div>
+    {prematchResearch.market_error_pp && (
+      <div style={{ fontSize: 11, color: '#6a1b9a', lineHeight: 1.5, marginTop: 4 }}>
+        <strong>Market error:</strong> {prematchResearch.market_error_pp}pp gap detected
+      </div>
+    )}
+  </div>
+)}
 {tournamentProfile && (
   <div style={{
     padding: '10px 14px', borderRadius: 8, marginBottom: 12,
