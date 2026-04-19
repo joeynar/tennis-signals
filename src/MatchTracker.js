@@ -35,6 +35,9 @@ const [secondServePressure, setSecondServePressure] = useState(false);
 const [tournamentOptions, setTournamentOptions] = useState([]);
 const [tournamentProfile, setTournamentProfile] = useState(null);
 const [opponentProfile, setOpponentProfile] = useState(null);
+const [whoServesFirst, setWhoServesFirst] = useState('player'); // 'player' or 'opponent'
+const [breakHistory, setBreakHistory] = useState([]); // array of {set, gameNumber, brokenPlayer, score}
+const [prevGames, setPrevGames] = useState({ player: 0, opponent: 0, set: 1 });
 
 
   useEffect(() => {
@@ -51,6 +54,56 @@ const [opponentProfile, setOpponentProfile] = useState(null);
   useEffect(() => {
     calculateScore();
   }, [servePct, doubleFaults, bpMissed, consecutivePoints, setContext, situation, flags, thresholds, set1ServePct, set2ServePct, gamesLostRow, secondServePressure]);
+
+  useEffect(() => {
+    // Detect breaks when games change
+    const currentSet = setContext === 1 ? 1 : setContext === 1.3 ? 2 : 3;
+    
+    // If we changed sets, reset prevGames for new set
+    if (currentSet !== prevGames.set) {
+      setPrevGames({ player: gamesPlayer, opponent: gamesOpponent, set: currentSet });
+      return;
+    }
+    
+    // Detect if a break just happened
+    const playerGameUp = gamesPlayer > prevGames.player;
+    const opponentGameUp = gamesOpponent > prevGames.opponent;
+    
+    if (playerGameUp || opponentGameUp) {
+      const totalGamesBefore = prevGames.player + prevGames.opponent;
+      const gameNumber = totalGamesBefore + 1;
+      
+      // Determine who was serving this game
+      // If player serves first: player serves odd games (1, 3, 5...), opponent serves even (2, 4, 6...)
+      // If opponent serves first: opposite
+      const playerServesThisGame = whoServesFirst === 'player' 
+        ? gameNumber % 2 === 1 
+        : gameNumber % 2 === 0;
+      
+      // Break detected if non-server won the game
+      if (playerGameUp && !playerServesThisGame) {
+        // Player won opponent's serve — opponent got broken
+        setBreakHistory(prev => [...prev, {
+          set: currentSet,
+          gameNumber: gameNumber,
+          brokenPlayer: 'opponent',
+          score: `${gamesPlayer}-${gamesOpponent}`,
+          timestamp: new Date().toISOString()
+        }]);
+      } else if (opponentGameUp && playerServesThisGame) {
+        // Opponent won player's serve — player got broken
+        setBreakHistory(prev => [...prev, {
+          set: currentSet,
+          gameNumber: gameNumber,
+          brokenPlayer: 'player',
+          score: `${gamesPlayer}-${gamesOpponent}`,
+          timestamp: new Date().toISOString()
+        }]);
+      }
+      
+      setPrevGames({ player: gamesPlayer, opponent: gamesOpponent, set: currentSet });
+    }
+  }, [gamesPlayer, gamesOpponent, setContext]);
 
   async function fetchThresholds() {
     const { data } = await supabase
@@ -223,6 +276,7 @@ if (secondServePressure) gamesScore += 12;
   - Set: ${setContext === 1 ? '1st' : setContext === 1.3 ? '2nd' : '3rd'}
   - Situation: ${situation === 2 ? 'Serving for set/match or tiebreak' : situation === 1.5 ? 'Leading but opponent broke back' : situation === 1.3 ? 'Serving to stay in set' : 'Normal game'}
   - Active flags: ${Object.entries(flags).filter(([k,v]) => v).map(([k]) => k).join(', ') || 'None'}
+  - BREAK HISTORY: ${getBreakSummary() ? `Total breaks: ${getBreakSummary().total}. ${player.name} got broken at: ${getBreakSummary().playerBrokenAt || 'none'}. ${opponent || 'Opponent'} got broken at: ${getBreakSummary().opponentBrokenAt || 'none'}. Current set breaks: ${getBreakSummary().currentSet}` : 'No breaks yet'}
   - Signal score: ${score}/100
   
   Based on this data, provide:
@@ -270,6 +324,24 @@ if (secondServePressure) gamesScore += 12;
       parse_mode: 'HTML'
     })
   });
+}
+function getBreakSummary() {
+  if (breakHistory.length === 0) return null;
+  
+  const playerBreaks = breakHistory.filter(b => b.brokenPlayer === 'player');
+  const opponentBreaks = breakHistory.filter(b => b.brokenPlayer === 'opponent');
+  const currentSet = setContext === 1 ? 1 : setContext === 1.3 ? 2 : 3;
+  const currentSetBreaks = breakHistory.filter(b => b.set === currentSet);
+  
+  return {
+    total: breakHistory.length,
+    playerBreaks: playerBreaks.length,
+    opponentBreaks: opponentBreaks.length,
+    currentSet: currentSetBreaks.length,
+    history: breakHistory,
+    playerBrokenAt: playerBreaks.map(b => `Set ${b.set} game ${b.gameNumber} (${b.score})`).join(', '),
+    opponentBrokenAt: opponentBreaks.map(b => `Set ${b.set} game ${b.gameNumber} (${b.score})`).join(', ')
+  };
 }
   function getAlertColor() {
     if (alertLevel === 'high') return '#E24B4A';
@@ -345,6 +417,8 @@ setGamesOpponent(0);
 setPointsPlayer(0);
 setPointsOpponent(0);
 setMatchContext('');
+setBreakHistory([]);
+setPrevGames({ player: 0, opponent: 0, set: 1 });
 }} style={{ fontSize: '12px', color: '#E24B4A', background: 'none', border: 'none', cursor: 'pointer', padding: '0 0 12px', marginLeft: '12px' }}>
   Reset match
 </button>
@@ -427,7 +501,44 @@ setMatchContext('');
   rows={3}
   style={{ width: '100%', marginBottom: '12px', fontSize: '13px', padding: '8px', borderRadius: '8px', border: '1px solid #ddd', boxSizing: 'border-box', resize: 'none' }}
 />
+{/* Who serves first toggle */}
+<div style={{ marginBottom: 12, background: '#f8f9fa', borderRadius: 10, padding: 12 }}>
+  <div style={{ fontSize: 11, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Who served first?</div>
+  <div style={{ display: 'flex', gap: 8 }}>
+    <button onClick={() => setWhoServesFirst('player')}
+      style={{
+        flex: 1, padding: '8px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+        border: `1px solid ${whoServesFirst === 'player' ? '#e53935' : '#ddd'}`,
+        background: whoServesFirst === 'player' ? '#ffebee' : 'white',
+        color: whoServesFirst === 'player' ? '#e53935' : '#666'
+      }}>
+      {player.name}
+    </button>
+    <button onClick={() => setWhoServesFirst('opponent')}
+      style={{
+        flex: 1, padding: '8px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+        border: `1px solid ${whoServesFirst === 'opponent' ? '#e53935' : '#ddd'}`,
+        background: whoServesFirst === 'opponent' ? '#ffebee' : 'white',
+        color: whoServesFirst === 'opponent' ? '#e53935' : '#666'
+      }}>
+      {opponent || 'Opponent'}
+    </button>
+  </div>
+</div>
 
+{/* Break History */}
+{breakHistory.length > 0 && (
+  <div style={{ marginBottom: 16, background: '#fff3e0', borderRadius: 10, padding: 12, border: '1px solid #ffcc80' }}>
+    <div style={{ fontSize: 11, color: '#e65100', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+      Break History ({breakHistory.length} total)
+    </div>
+    {breakHistory.map((b, i) => (
+      <div key={i} style={{ fontSize: 12, color: '#5d4037', marginBottom: 4 }}>
+        Set {b.set} · Game {b.gameNumber} · <strong>{b.brokenPlayer === 'player' ? player.name : (opponent || 'Opponent')}</strong> broken at {b.score}
+      </div>
+    ))}
+  </div>
+)}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
         <div>
           <div style={{ fontSize: '18px', fontWeight: '500' }}>{player.name}</div>
