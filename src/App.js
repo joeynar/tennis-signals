@@ -4,6 +4,7 @@ import MatchTracker from './MatchTracker';
 import H2HUploader from './H2HUploader'; 
 import DualMatchTracker from './DualMatchTracker';
 import TournamentUploader from './TournamentUploader';
+import PrematchUploader from './PrematchUploader';
 
 function App() {
   const [players, setPlayers] = useState([]);
@@ -12,6 +13,7 @@ function App() {
   const [showH2H, setShowH2H] = useState(false);
   const [showDual, setShowDual] = useState(false);
   const [showTournament, setShowTournament] = useState(false);
+  const [showPrematch, setShowPrematch] = useState(false);
 
   useEffect(() => {
     fetchPlayers();
@@ -25,6 +27,9 @@ function App() {
     if (error) console.error('Error:', error);
     else setPlayers(data);
     setLoading(false);
+  }
+  if (showPrematch) {
+    return <PrematchUploader onBack={() => setShowPrematch(false)} />;
   }
   if (showTournament) {
     return <TournamentUploader onBack={() => setShowTournament(false)} />;
@@ -72,6 +77,16 @@ function App() {
   }}
 >
   🏆 Upload Tournament Profile
+</button>
+<button
+  onClick={() => setShowPrematch(true)}
+  style={{
+    width: '100%', padding: '14px', borderRadius: 8, marginBottom: 24,
+    background: '#7b1fa2', color: 'white', border: 'none',
+    fontSize: 15, fontWeight: 600, cursor: 'pointer'
+  }}
+>
+  📊 Upload Pre-Match Research
 </button>
 
       {loading ? (
