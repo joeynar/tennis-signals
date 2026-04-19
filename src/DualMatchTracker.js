@@ -230,6 +230,13 @@ export default function DualMatchTracker({ onBack }) {
   const [matchesB, setMatchesB] = useState([]);
   const [tournamentOptions, setTournamentOptions] = useState([]);
 const [tournamentProfile, setTournamentProfile] = useState(null);
+const [setsA, setSetsA] = useState(0);
+const [setsB, setSetsB] = useState(0);
+const [gamesA, setGamesA] = useState(0);
+const [gamesB, setGamesB] = useState(0);
+const [pointsA, setPointsA] = useState(0);
+const [pointsB, setPointsB] = useState(0);
+const [matchContext, setMatchContext] = useState('');
 
   // Load all players on mount
   useEffect(() => {
@@ -301,6 +308,16 @@ const [tournamentProfile, setTournamentProfile] = useState(null);
       .then(({ data }) => { setH2H(data || null); });
   }, [playerAId, playerBId]);
 
+  function resetMatch() {
+    setStatsA(defaultStats(thresholdsA?.serve_baseline || 65));
+    setStatsB(defaultStats(thresholdsB?.serve_baseline || 65));
+    setSetsA(0); setSetsB(0);
+    setGamesA(0); setGamesB(0);
+    setPointsA(0); setPointsB(0);
+    setMatchContext('');
+    setPrediction('');
+  }
+
   const scoreA = calculateSignalScore(statsA, thresholdsA);
   const scoreB = calculateSignalScore(statsB, thresholdsB);
 
@@ -317,6 +334,9 @@ You are a live tennis betting analyst. Analyze both players in this match and pr
 
 TOURNAMENT: ${tournament || 'Unknown'}
 TOURNAMENT CONTEXT: ${tournamentContext}
+
+CURRENT SCORE: Sets ${setsA}-${setsB} | Games ${gamesA}-${gamesB} | Points ${['0','15','30','40','AD'][pointsA]}-${['0','15','30','40','AD'][pointsB]}
+MATCH CONTEXT: ${matchContext || 'None provided'}
 
 --- PLAYER A: ${playerA.name} ---
 Ranking: ${playerA.ranking} | Nationality: ${playerA.nationality}
@@ -476,6 +496,73 @@ Provide three sections:
         </div>
       </div>
 
+{/* Reset button */}
+{playerA && playerB && (
+  <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+    <button onClick={resetMatch}
+      style={{ background: 'none', border: 'none', color: '#e53935', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+      Reset match
+    </button>
+  </div>
+)}
+
+{/* Score box */}
+{playerA && playerB && (
+  <div style={{ marginBottom: 16, background: '#f8f9fa', borderRadius: 10, padding: 14 }}>
+    <div style={{ fontSize: 11, color: '#888', marginBottom: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Score</div>
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 10, fontSize: 11, color: '#888', textAlign: 'center', fontWeight: 600 }}>
+      <div>{playerA.name}</div>
+      <div>{playerB.name}</div>
+    </div>
+    {[['Sets', setsA, setSetsA, setsB, setSetsB, 3],
+      ['Games', gamesA, setGamesA, gamesB, setGamesB, 7]].map(([label, a, setA, b, setB, max]) => (
+      <div key={label} style={{ display: 'flex', alignItems: 'center', marginBottom: 8, gap: 8, justifyContent: 'center' }}>
+        <span style={{ fontSize: 12, color: '#888', width: 50 }}>{label}</span>
+        <button onClick={() => setA(Math.max(0, a-1))} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #ddd', cursor: 'pointer', background: 'white' }}>−</button>
+        <span style={{ fontSize: 18, fontWeight: 600, minWidth: 16, textAlign: 'center' }}>{a}</span>
+        <button onClick={() => setA(Math.min(max, a+1))} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #ddd', cursor: 'pointer', background: 'white' }}>+</button>
+        <span style={{ fontSize: 14, color: '#ccc' }}>—</span>
+        <button onClick={() => setB(Math.max(0, b-1))} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #ddd', cursor: 'pointer', background: 'white' }}>−</button>
+        <span style={{ fontSize: 18, fontWeight: 600, minWidth: 16, textAlign: 'center' }}>{b}</span>
+        <button onClick={() => setB(Math.min(max, b+1))} style={{ padding: '2px 8px', borderRadius: 4, border: '1px solid #ddd', cursor: 'pointer', background: 'white' }}>+</button>
+      </div>
+    ))}
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, justifyContent: 'center', flexWrap: 'wrap' }}>
+      <span style={{ fontSize: 12, color: '#888', width: 50 }}>Points</span>
+      {['0','15','30','40','AD'].map(p => (
+        <button key={`a-${p}`} onClick={() => setPointsA(['0','15','30','40','AD'].indexOf(p))}
+          style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #ddd', cursor: 'pointer', fontSize: 12,
+            background: pointsA === ['0','15','30','40','AD'].indexOf(p) ? '#333' : 'white',
+            color: pointsA === ['0','15','30','40','AD'].indexOf(p) ? 'white' : '#333' }}>
+          {p}
+        </button>
+      ))}
+      <span style={{ fontSize: 14, color: '#ccc' }}>—</span>
+      {['0','15','30','40','AD'].map(p => (
+        <button key={`b-${p}`} onClick={() => setPointsB(['0','15','30','40','AD'].indexOf(p))}
+          style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid #ddd', cursor: 'pointer', fontSize: 12,
+            background: pointsB === ['0','15','30','40','AD'].indexOf(p) ? '#333' : 'white',
+            color: pointsB === ['0','15','30','40','AD'].indexOf(p) ? 'white' : '#333' }}>
+          {p}
+        </button>
+      ))}
+    </div>
+  </div>
+)}
+
+{/* Match context */}
+{playerA && playerB && (
+  <textarea
+    placeholder="Match context (e.g. tournament situation, recent form, weather, anything notable)"
+    value={matchContext}
+    onChange={e => setMatchContext(e.target.value)}
+    rows={3}
+    style={{
+      width: '100%', marginBottom: 16, fontSize: 13, padding: 10,
+      borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box', resize: 'none'
+    }}
+  />
+)}
       {/* H2H summary bar */}
       {h2h && playerA && playerB && (
         <div style={{
