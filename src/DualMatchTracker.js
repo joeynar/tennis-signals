@@ -237,6 +237,9 @@ const [gamesB, setGamesB] = useState(0);
 const [pointsA, setPointsA] = useState(0);
 const [pointsB, setPointsB] = useState(0);
 const [matchContext, setMatchContext] = useState('');
+const [whoServesFirst, setWhoServesFirst] = useState('A'); // 'A' or 'B'
+const [breakHistory, setBreakHistory] = useState([]);
+const [prevGames, setPrevGames] = useState({ a: 0, b: 0, set: 1 });
 
   // Load all players on mount
   useEffect(() => {
@@ -316,11 +319,69 @@ const [matchContext, setMatchContext] = useState('');
     setPointsA(0); setPointsB(0);
     setMatchContext('');
     setPrediction('');
+    setBreakHistory([]);
+setPrevGames({ a: 0, b: 0, set: 1 });
   }
-
+  useEffect(() => {
+    // Determine current set from sum of all sets played + 1
+    const currentSet = setsA + setsB + 1;
+    
+    if (currentSet !== prevGames.set) {
+      setPrevGames({ a: gamesA, b: gamesB, set: currentSet });
+      return;
+    }
+    
+    const aGameUp = gamesA > prevGames.a;
+    const bGameUp = gamesB > prevGames.b;
+    
+    if (aGameUp || bGameUp) {
+      const totalGamesBefore = prevGames.a + prevGames.b;
+      const gameNumber = totalGamesBefore + 1;
+      
+      const aServesThisGame = whoServesFirst === 'A'
+        ? gameNumber % 2 === 1
+        : gameNumber % 2 === 0;
+      
+      if (aGameUp && !aServesThisGame) {
+        // A won B's serve — B got broken
+        setBreakHistory(prev => [...prev, {
+          set: currentSet,
+          gameNumber: gameNumber,
+          brokenPlayer: 'B',
+          score: `${gamesA}-${gamesB}`,
+          timestamp: new Date().toISOString()
+        }]);
+      } else if (bGameUp && aServesThisGame) {
+        // B won A's serve — A got broken
+        setBreakHistory(prev => [...prev, {
+          set: currentSet,
+          gameNumber: gameNumber,
+          brokenPlayer: 'A',
+          score: `${gamesA}-${gamesB}`,
+          timestamp: new Date().toISOString()
+        }]);
+      }
+      
+      setPrevGames({ a: gamesA, b: gamesB, set: currentSet });
+    }
+  }, [gamesA, gamesB, setsA, setsB]);
   const scoreA = calculateSignalScore(statsA, thresholdsA);
   const scoreB = calculateSignalScore(statsB, thresholdsB);
-
+  function getBreakSummary() {
+    if (breakHistory.length === 0) return null;
+    const aBreaks = breakHistory.filter(b => b.brokenPlayer === 'A');
+    const bBreaks = breakHistory.filter(b => b.brokenPlayer === 'B');
+    const currentSet = setsA + setsB + 1;
+    const currentSetBreaks = breakHistory.filter(b => b.set === currentSet);
+    return {
+      total: breakHistory.length,
+      aBreaks: aBreaks.length,
+      bBreaks: bBreaks.length,
+      currentSet: currentSetBreaks.length,
+      aBrokenAt: aBreaks.map(b => `Set ${b.set} game ${b.gameNumber} (${b.score})`).join(', '),
+      bBrokenAt: bBreaks.map(b => `Set ${b.set} game ${b.gameNumber} (${b.score})`).join(', ')
+    };
+  }
   async function getDualPrediction() {
     if (!playerA || !playerB) return;
     setLoadingPrediction(true);
@@ -337,6 +398,7 @@ TOURNAMENT CONTEXT: ${tournamentContext}
 
 CURRENT SCORE: Sets ${setsA}-${setsB} | Games ${gamesA}-${gamesB} | Points ${['0','15','30','40','AD'][pointsA]}-${['0','15','30','40','AD'][pointsB]}
 MATCH CONTEXT: ${matchContext || 'None provided'}
+BREAK HISTORY: ${getBreakSummary() ? `Total breaks: ${getBreakSummary().total}. ${playerA.name} got broken at: ${getBreakSummary().aBrokenAt || 'none'}. ${playerB.name} got broken at: ${getBreakSummary().bBrokenAt || 'none'}. Current set breaks: ${getBreakSummary().currentSet}` : 'No breaks yet'}
 
 --- PLAYER A: ${playerA.name} ---
 Ranking: ${playerA.ranking} | Nationality: ${playerA.nationality}
@@ -549,7 +611,56 @@ Provide three sections:
     </div>
   </div>
 )}
+{/* Who serves first toggle */}
+{playerA && playerB && (
+  <div style={{ marginBottom: 12, background: '#f8f9fa', borderRadius: 10, padding: 12 }}>
+    <div style={{ fontSize: 11, color: '#888', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Who served first?</div>
+    <div style={{ display: 'flex', gap: 8 }}>
+      <button onClick={() => setWhoServesFirst('A')}
+        style={{
+          flex: 1, padding: '8px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          border: `1px solid ${whoServesFirst === 'A' ? '#e53935' : '#ddd'}`,
+          background: whoServesFirst === 'A' ? '#ffebee' : 'white',
+          color: whoServesFirst === 'A' ? '#e53935' : '#666'
+        }}>
+        {playerA.name}
+      </button>
+      <button onClick={() => setWhoServesFirst('B')}
+        style={{
+          flex: 1, padding: '8px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          border: `1px solid ${whoServesFirst === 'B' ? '#e53935' : '#ddd'}`,
+          background: whoServesFirst === 'B' ? '#ffebee' : 'white',
+          color: whoServesFirst === 'B' ? '#e53935' : '#666'
+        }}>
+        {playerB.name}
+      </button>
+    </div>
+  </div>
+)}
 
+{/* Break History */}
+{playerA && playerB && breakHistory.length > 0 && (
+  <div style={{ marginBottom: 16, background: '#fff3e0', borderRadius: 10, padding: 12, border: '1px solid #ffcc80' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+      <div style={{ fontSize: 11, color: '#e65100', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+        Break History ({breakHistory.length} total)
+      </div>
+      <button
+        onClick={() => {
+          setBreakHistory([]);
+          setPrevGames({ a: gamesA, b: gamesB, set: setsA + setsB + 1 });
+        }}
+        style={{ background: 'none', border: 'none', color: '#e65100', fontSize: 11, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
+        Reset breaks
+      </button>
+    </div>
+    {breakHistory.map((b, i) => (
+      <div key={i} style={{ fontSize: 12, color: '#5d4037', marginBottom: 4 }}>
+        Set {b.set} · Game {b.gameNumber} · <strong>{b.brokenPlayer === 'A' ? playerA.name : playerB.name}</strong> broken at {b.score}
+      </div>
+    ))}
+  </div>
+)}
 {/* Match context */}
 {playerA && playerB && (
   <textarea
