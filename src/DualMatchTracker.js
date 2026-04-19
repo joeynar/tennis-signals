@@ -240,6 +240,7 @@ const [matchContext, setMatchContext] = useState('');
 const [whoServesFirst, setWhoServesFirst] = useState('A'); // 'A' or 'B'
 const [breakHistory, setBreakHistory] = useState([]);
 const [prevGames, setPrevGames] = useState({ a: 0, b: 0, set: 1 });
+const [prematchResearch, setPrematchResearch] = useState(null);
 
   // Load all players on mount
   useEffect(() => {
@@ -310,6 +311,19 @@ const [prevGames, setPrevGames] = useState({ a: 0, b: 0, set: 1 });
       ).single()
       .then(({ data }) => { setH2H(data || null); });
   }, [playerAId, playerBId]);
+  // Load pre-match research when both players selected
+useEffect(() => {
+  if (!playerAId || !playerBId) return;
+  supabase.from('prematch_research').select('*')
+    .or(
+      `and(player_a_id.eq.${playerAId},player_b_id.eq.${playerBId}),` +
+      `and(player_a_id.eq.${playerBId},player_b_id.eq.${playerAId})`
+    )
+    .order('match_date', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+    .then(({ data }) => { setPrematchResearch(data || null); });
+}, [playerAId, playerBId]);
 
   function resetMatch() {
     setStatsA(defaultStats(thresholdsA?.serve_baseline || 65));
@@ -321,6 +335,7 @@ const [prevGames, setPrevGames] = useState({ a: 0, b: 0, set: 1 });
     setPrediction('');
     setBreakHistory([]);
 setPrevGames({ a: 0, b: 0, set: 1 });
+setPrematchResearch(null);
   }
   useEffect(() => {
     // Determine current set from sum of all sets played + 1
@@ -399,6 +414,7 @@ TOURNAMENT CONTEXT: ${tournamentContext}
 CURRENT SCORE: Sets ${setsA}-${setsB} | Games ${gamesA}-${gamesB} | Points ${['0','15','30','40','AD'][pointsA]}-${['0','15','30','40','AD'][pointsB]}
 MATCH CONTEXT: ${matchContext || 'None provided'}
 BREAK HISTORY: ${getBreakSummary() ? `Total breaks: ${getBreakSummary().total}. ${playerA.name} got broken at: ${getBreakSummary().aBrokenAt || 'none'}. ${playerB.name} got broken at: ${getBreakSummary().bBrokenAt || 'none'}. Current set breaks: ${getBreakSummary().currentSet}` : 'No breaks yet'}
+PRE-MATCH RESEARCH: ${prematchResearch ? `MODEL VERDICT: ${prematchResearch.model_verdict}. Model probabilities - ${playerA.name}: ${prematchResearch.model_prob_a ? Math.round(prematchResearch.model_prob_a * 100) : '?'}%, ${playerB.name}: ${prematchResearch.model_prob_b ? Math.round(prematchResearch.model_prob_b * 100) : '?'}%. Market probabilities - ${playerA.name}: ${prematchResearch.market_prob_a ? Math.round(prematchResearch.market_prob_a * 100) : '?'}%, ${playerB.name}: ${prematchResearch.market_prob_b ? Math.round(prematchResearch.market_prob_b * 100) : '?'}%. Market error: ${prematchResearch.market_error_pp}pp. Primary bet: ${prematchResearch.primary_bet}. Live triggers: ${prematchResearch.live_triggers}. ${playerA.name} form: ${prematchResearch.player_a_form_summary}. ${playerB.name} form: ${prematchResearch.player_b_form_summary}` : 'No pre-match research loaded'}
 
 --- PLAYER A: ${playerA.name} ---
 Ranking: ${playerA.ranking} | Nationality: ${playerA.nationality}
@@ -673,6 +689,28 @@ Provide three sections:
       borderRadius: 8, border: '1px solid #ddd', boxSizing: 'border-box', resize: 'none'
     }}
   />
+)}
+{/* Pre-match research bar */}
+{prematchResearch && playerA && playerB && (
+  <div style={{
+    padding: '12px 14px', borderRadius: 10, marginBottom: 12,
+    background: '#f3e5f5', border: '1px solid #ce93d8'
+  }}>
+    <div style={{ fontSize: 12, fontWeight: 700, color: '#7b1fa2', marginBottom: 6 }}>
+      📊 Pre-match research loaded
+    </div>
+    <div style={{ fontSize: 11, color: '#6a1b9a', lineHeight: 1.5, marginBottom: 4 }}>
+      <strong>Verdict:</strong> {prematchResearch.model_verdict}
+    </div>
+    <div style={{ fontSize: 11, color: '#6a1b9a', lineHeight: 1.5, marginBottom: 4 }}>
+      <strong>Primary bet:</strong> {prematchResearch.primary_bet} ({prematchResearch.primary_ev_pct}% EV)
+    </div>
+    {prematchResearch.market_error_pp && (
+      <div style={{ fontSize: 11, color: '#6a1b9a', lineHeight: 1.5 }}>
+        <strong>Market error:</strong> {prematchResearch.market_error_pp}pp gap
+      </div>
+    )}
+  </div>
 )}
       {/* H2H summary bar */}
       {h2h && playerA && playerB && (
