@@ -529,9 +529,19 @@ setPrevGames({ player: 0, opponent: 0, set: 1 });
 {/* Break History */}
 {breakHistory.length > 0 && (
   <div style={{ marginBottom: 16, background: '#fff3e0', borderRadius: 10, padding: 12, border: '1px solid #ffcc80' }}>
-    <div style={{ fontSize: 11, color: '#e65100', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
-      Break History ({breakHistory.length} total)
-    </div>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+  <div style={{ fontSize: 11, color: '#e65100', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
+    Break History ({breakHistory.length} total)
+  </div>
+  <button
+    onClick={() => {
+      setBreakHistory([]);
+      setPrevGames({ player: gamesPlayer, opponent: gamesOpponent, set: setContext === 1 ? 1 : setContext === 1.3 ? 2 : 3 });
+    }}
+    style={{ background: 'none', border: 'none', color: '#e65100', fontSize: 11, fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>
+    Reset breaks
+  </button>
+</div>
     {breakHistory.map((b, i) => (
       <div key={i} style={{ fontSize: 12, color: '#5d4037', marginBottom: 4 }}>
         Set {b.set} · Game {b.gameNumber} · <strong>{b.brokenPlayer === 'player' ? player.name : (opponent || 'Opponent')}</strong> broken at {b.score}
