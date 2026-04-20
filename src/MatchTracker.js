@@ -32,6 +32,10 @@ const [matchContext, setMatchContext] = useState('');
 const [set2ServePct, setSet2ServePct] = useState(65);
 const [gamesLostRow, setGamesLostRow] = useState(0);
 const [secondServePressure, setSecondServePressure] = useState(false);
+const [unforcedErrors, setUnforcedErrors] = useState(0);
+const [winners, setWinners] = useState(0);
+const [secondServeWonPct, setSecondServeWonPct] = useState(50);
+const [serviceHoldPct, setServiceHoldPct] = useState(75);
 const [tournamentOptions, setTournamentOptions] = useState([]);
 const [tournamentProfile, setTournamentProfile] = useState(null);
 const [prematchResearch, setPrematchResearch] = useState(null);
@@ -54,7 +58,7 @@ const [prevGames, setPrevGames] = useState({ player: 0, opponent: 0, set: 1 });
 
   useEffect(() => {
     calculateScore();
-  }, [servePct, doubleFaults, bpMissed, consecutivePoints, setContext, situation, flags, thresholds, set1ServePct, set2ServePct, gamesLostRow, secondServePressure]);
+  }, [servePct, doubleFaults, bpMissed, consecutivePoints, setContext, situation, flags, thresholds, set1ServePct, set2ServePct, gamesLostRow, secondServePressure, unforcedErrors, winners, secondServeWonPct, serviceHoldPct]);
 
   useEffect(() => {
     // Detect breaks when games change
@@ -213,6 +217,24 @@ else if (gamesLostRow >= 3) gamesScore = 12;
 else if (gamesLostRow >= 2) gamesScore = 5;
 if (secondServePressure) gamesScore += 12;
 
+// Winner-to-error ratio score (very predictive)
+let werScore = 0;
+const wer = winners / Math.max(unforcedErrors, 1);
+if (wer < 0.5) werScore = 18;        // disastrous
+else if (wer < 0.8) werScore = 12;   // struggling
+else if (wer < 1.0) werScore = 6;    // borderline
+
+// Second serve weakness
+let s2Score = 0;
+if (secondServeWonPct <= 35) s2Score = 15;
+else if (secondServeWonPct <= 42) s2Score = 8;
+else if (secondServeWonPct <= 48) s2Score = 4;
+
+// Service hold collapse
+let holdScore = 0;
+if (serviceHoldPct <= 50) holdScore = 18;
+else if (serviceHoldPct <= 65) holdScore = 10;
+else if (serviceHoldPct <= 75) holdScore = 4;
     let flagScore = 0;
     if (flags.bodyLanguage) flagScore += 8;
     if (flags.umpireDispute) flagScore += 15;
@@ -220,7 +242,7 @@ if (secondServePressure) gamesScore += 12;
     if (flags.bpCascade) flagScore += 10;
     if (flags.lostFirstSetBagel) flagScore += 12;
 
-    const raw = serveScore + dfScore + moScore + bpScore + trendScore + gamesScore;;
+    const raw = serveScore + dfScore + moScore + bpScore + trendScore + gamesScore + werScore + s2Score + holdScore;
     const total = Math.min(100, Math.round(raw * setContext * situation * 0.6 + flagScore));
 
     setScore(total);
@@ -304,6 +326,10 @@ if (secondServePressure) gamesScore += 12;
   - Double faults this set: ${doubleFaults}
   - Break points missed: ${bpMissed}
   - Consecutive points lost: ${consecutivePoints}
+  - Unforced errors this set: ${unforcedErrors}
+- Winners this set: ${winners} (W/E ratio: ${(winners / Math.max(unforcedErrors, 1)).toFixed(2)})
+- 2nd serve points won: ${secondServeWonPct}%
+- Service hold % this match: ${serviceHoldPct}%
   - Set: ${setContext === 1 ? '1st' : setContext === 1.3 ? '2nd' : '3rd'}
   - Situation: ${situation === 2 ? 'Serving for set/match or tiebreak' : situation === 1.5 ? 'Leading but opponent broke back' : situation === 1.3 ? 'Serving to stay in set' : 'Normal game'}
   - Active flags: ${Object.entries(flags).filter(([k,v]) => v).map(([k]) => k).join(', ') || 'None'}
@@ -440,6 +466,10 @@ function getBreakSummary() {
   setSet1ServePct(65);
 setSet2ServePct(65);
 setGamesLostRow(0);
+setUnforcedErrors(0);
+setWinners(0);
+setSecondServeWonPct(50);
+setServiceHoldPct(75);
 setTournament('');
 setSetsPlayer(0);
 setSetsOpponent(0);
@@ -658,6 +688,29 @@ setPrevGames({ player: 0, opponent: 0, set: 1 });
         <div style={{ fontSize: '14px', fontWeight: '500' }}>{bpMissed}</div>
       </div>
 
+      <div style={{ marginBottom: '16px' }}>
+  <span style={labelStyle}>Unforced errors this set</span>
+  <input type="range" min="0" max="20" value={unforcedErrors} onChange={e => setUnforcedErrors(+e.target.value)} style={inputStyle} />
+  <div style={{ fontSize: '14px', fontWeight: '500' }}>{unforcedErrors}</div>
+</div>
+
+<div style={{ marginBottom: '16px' }}>
+  <span style={labelStyle}>Winners this set</span>
+  <input type="range" min="0" max="20" value={winners} onChange={e => setWinners(+e.target.value)} style={inputStyle} />
+  <div style={{ fontSize: '14px', fontWeight: '500' }}>{winners} (W/E ratio: {(winners / Math.max(unforcedErrors, 1)).toFixed(2)})</div>
+</div>
+
+<div style={{ marginBottom: '16px' }}>
+  <span style={labelStyle}>2nd serve points won %</span>
+  <input type="range" min="20" max="80" value={secondServeWonPct} onChange={e => setSecondServeWonPct(+e.target.value)} style={inputStyle} />
+  <div style={{ fontSize: '14px', fontWeight: '500' }}>{secondServeWonPct}%</div>
+</div>
+
+<div style={{ marginBottom: '16px' }}>
+  <span style={labelStyle}>Service hold % this match</span>
+  <input type="range" min="30" max="100" value={serviceHoldPct} onChange={e => setServiceHoldPct(+e.target.value)} style={inputStyle} />
+  <div style={{ fontSize: '14px', fontWeight: '500' }}>{serviceHoldPct}%</div>
+</div>
       <div style={{ marginBottom: '16px' }}>
         <span style={labelStyle}>Consecutive points lost</span>
         <input type="range" min="0" max="10" value={consecutivePoints} onChange={e => setConsecutivePoints(+e.target.value)} style={inputStyle} />
