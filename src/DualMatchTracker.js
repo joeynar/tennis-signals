@@ -7,7 +7,8 @@ function calculateSignalScore(stats, thresholds) {
 
   const { servePct, set1Serve, set2Serve, doubleFaults, bpMissed,
     consecutivePoints, gamesLost, unforcedErrors, winners,
-    secondServeWonPct, serviceHoldPct, setContext, situation,
+    secondServeWonPct, serviceHoldPct, aces, avgRallyLength,
+    firstServeSpeed, bpCreated, setContext, situation,
     bodyLanguage, umpireDispute, thirdSetCollapse, bpCascade,
     lostBagel, secondServePressure } = stats;
 
@@ -73,7 +74,22 @@ let holdScore = 0;
 if (serviceHoldPct <= 50) holdScore = 18;
 else if (serviceHoldPct <= 65) holdScore = 10;
 else if (serviceHoldPct <= 75) holdScore = 4;
-  // Psychology flags
+  
+// Pressure efficiency
+let pressureScore = 0;
+if (bpCreated >= 5 && bpMissed >= 4) pressureScore = 12;
+else if (bpCreated >= 3 && bpMissed >= 3) pressureScore = 6;
+
+// Rally length mismatch
+let rallyScore = 0;
+if (avgRallyLength >= 7) rallyScore = 8;
+else if (avgRallyLength >= 5) rallyScore = 4;
+
+// Serve speed drop
+let speedScore = 0;
+if (firstServeSpeed <= 160) speedScore = 10;
+else if (firstServeSpeed <= 170) speedScore = 5;
+// Psychology flags
   let flagScore = 0;
   if (bodyLanguage) flagScore += 8;
   if (bpCascade) flagScore += 10;
@@ -89,7 +105,7 @@ else if (serviceHoldPct <= 75) holdScore = 4;
     : situation === 'Leading, opp broke back' ? 1.5
     : situation === 'Serving to stay in set' ? 1.3 : 1.0;
 
-    const raw = serveScore + dfScore + moScore + bpScore + trendScore + gamesScore + werScore + s2Score + holdScore;
+    const raw = serveScore + dfScore + moScore + bpScore + trendScore + gamesScore + werScore + s2Score + holdScore + pressureScore + rallyScore + speedScore;
   const total = Math.min(100, Math.round(raw * setMult * sitMult * 0.6 + flagScore));
   return total;
 }
@@ -108,6 +124,10 @@ function defaultStats(baseline) {
     winners: 0,
     secondServeWonPct: 50,
     serviceHoldPct: 75,
+    aces: 0,
+    avgRallyLength: 4,
+    firstServeSpeed: 180,
+    bpCreated: 0,
     setContext: '1st set',
     situation: 'Normal',
     bodyLanguage: false,
@@ -189,6 +209,14 @@ function PlayerPanel({ player, thresholds, stats, onChange, side }) {
 </div>
 {slider('2nd serve points won %', 'secondServeWonPct', 20, 80, '%')}
 {slider('Service hold % this match', 'serviceHoldPct', 30, 100, '%')}
+
+{slider('Aces this set', 'aces', 0, 15)}
+{slider('Average rally length (shots)', 'avgRallyLength', 1, 12)}
+{slider('First serve speed (km/h)', 'firstServeSpeed', 140, 220)}
+{slider('Break points created this set', 'bpCreated', 0, 12)}
+<div style={{ fontSize: 11, color: '#999', marginTop: -8, marginBottom: 14 }}>
+  BP converted: {Math.max(0, stats.bpCreated - stats.bpMissed)}
+</div>
 
       {/* Set context */}
       <div style={{ marginBottom: 14 }}>
@@ -460,6 +488,8 @@ LIVE STATS RIGHT NOW:
 - Games lost in a row: ${statsA.gamesLost}
 - Unforced errors: ${statsA.unforcedErrors} | Winners: ${statsA.winners} (W/E ratio: ${(statsA.winners / Math.max(statsA.unforcedErrors, 1)).toFixed(2)})
 - 2nd serve won: ${statsA.secondServeWonPct}% | Service hold: ${statsA.serviceHoldPct}%
+- Aces: ${statsA.aces} | Avg rally length: ${statsA.avgRallyLength} shots
+- 1st serve speed: ${statsA.firstServeSpeed} km/h | BP created: ${statsA.bpCreated} (converted: ${Math.max(0, statsA.bpCreated - statsA.bpMissed)})
 - Set: ${statsA.setContext} | Situation: ${statsA.situation}
 - Active psychology flags: ${Object.entries({
   'Body language': statsA.bodyLanguage,
@@ -485,6 +515,8 @@ LIVE STATS RIGHT NOW:
 - Games lost in a row: ${statsB.gamesLost}
 - Unforced errors: ${statsB.unforcedErrors} | Winners: ${statsB.winners} (W/E ratio: ${(statsB.winners / Math.max(statsB.unforcedErrors, 1)).toFixed(2)})
 - 2nd serve won: ${statsB.secondServeWonPct}% | Service hold: ${statsB.serviceHoldPct}%
+- Aces: ${statsB.aces} | Avg rally length: ${statsB.avgRallyLength} shots
+- 1st serve speed: ${statsB.firstServeSpeed} km/h | BP created: ${statsB.bpCreated} (converted: ${Math.max(0, statsB.bpCreated - statsB.bpMissed)})
 - Set: ${statsB.setContext} | Situation: ${statsB.situation}
 - Active psychology flags: ${Object.entries({
   'Body language': statsB.bodyLanguage,
