@@ -36,6 +36,10 @@ const [unforcedErrors, setUnforcedErrors] = useState(0);
 const [winners, setWinners] = useState(0);
 const [secondServeWonPct, setSecondServeWonPct] = useState(50);
 const [serviceHoldPct, setServiceHoldPct] = useState(75);
+const [aces, setAces] = useState(0);
+const [avgRallyLength, setAvgRallyLength] = useState(4);
+const [firstServeSpeed, setFirstServeSpeed] = useState(180);
+const [bpCreated, setBpCreated] = useState(0);
 const [tournamentOptions, setTournamentOptions] = useState([]);
 const [tournamentProfile, setTournamentProfile] = useState(null);
 const [prematchResearch, setPrematchResearch] = useState(null);
@@ -58,7 +62,7 @@ const [prevGames, setPrevGames] = useState({ player: 0, opponent: 0, set: 1 });
 
   useEffect(() => {
     calculateScore();
-  }, [servePct, doubleFaults, bpMissed, consecutivePoints, setContext, situation, flags, thresholds, set1ServePct, set2ServePct, gamesLostRow, secondServePressure, unforcedErrors, winners, secondServeWonPct, serviceHoldPct]);
+  }, [servePct, doubleFaults, bpMissed, consecutivePoints, setContext, situation, flags, thresholds, set1ServePct, set2ServePct, gamesLostRow, secondServePressure, unforcedErrors, winners, secondServeWonPct, serviceHoldPct, aces, avgRallyLength, firstServeSpeed, bpCreated]);
 
   useEffect(() => {
     // Detect breaks when games change
@@ -235,14 +239,29 @@ let holdScore = 0;
 if (serviceHoldPct <= 50) holdScore = 18;
 else if (serviceHoldPct <= 65) holdScore = 10;
 else if (serviceHoldPct <= 75) holdScore = 4;
-    let flagScore = 0;
+    
+// Pressure efficiency — earned BPs vs missed
+let pressureScore = 0;
+if (bpCreated >= 5 && bpMissed >= 4) pressureScore = 12;  // creating but failing
+else if (bpCreated >= 3 && bpMissed >= 3) pressureScore = 6;
+
+// Rally length mismatch (long rallies = grinder mode = exhaustion risk for power players)
+let rallyScore = 0;
+if (avgRallyLength >= 7) rallyScore = 8;
+else if (avgRallyLength >= 5) rallyScore = 4;
+
+// Serve speed drop
+let speedScore = 0;
+if (firstServeSpeed <= 160) speedScore = 10;
+else if (firstServeSpeed <= 170) speedScore = 5;
+let flagScore = 0;
     if (flags.bodyLanguage) flagScore += 8;
     if (flags.umpireDispute) flagScore += 15;
     if (flags.thirdSetCollapse) flagScore += 18;
     if (flags.bpCascade) flagScore += 10;
     if (flags.lostFirstSetBagel) flagScore += 12;
 
-    const raw = serveScore + dfScore + moScore + bpScore + trendScore + gamesScore + werScore + s2Score + holdScore;
+    const raw = serveScore + dfScore + moScore + bpScore + trendScore + gamesScore + werScore + s2Score + holdScore + pressureScore + rallyScore + speedScore;
     const total = Math.min(100, Math.round(raw * setContext * situation * 0.6 + flagScore));
 
     setScore(total);
@@ -330,6 +349,10 @@ else if (serviceHoldPct <= 75) holdScore = 4;
 - Winners this set: ${winners} (W/E ratio: ${(winners / Math.max(unforcedErrors, 1)).toFixed(2)})
 - 2nd serve points won: ${secondServeWonPct}%
 - Service hold % this match: ${serviceHoldPct}%
+- Aces this set: ${aces}
+- Average rally length: ${avgRallyLength} shots
+- First serve speed avg: ${firstServeSpeed} km/h
+- Break points created this set: ${bpCreated} (converted: ${Math.max(0, bpCreated - bpMissed)})
   - Set: ${setContext === 1 ? '1st' : setContext === 1.3 ? '2nd' : '3rd'}
   - Situation: ${situation === 2 ? 'Serving for set/match or tiebreak' : situation === 1.5 ? 'Leading but opponent broke back' : situation === 1.3 ? 'Serving to stay in set' : 'Normal game'}
   - Active flags: ${Object.entries(flags).filter(([k,v]) => v).map(([k]) => k).join(', ') || 'None'}
@@ -470,6 +493,10 @@ setUnforcedErrors(0);
 setWinners(0);
 setSecondServeWonPct(50);
 setServiceHoldPct(75);
+setAces(0);
+setAvgRallyLength(4);
+setFirstServeSpeed(180);
+setBpCreated(0);
 setTournament('');
 setSetsPlayer(0);
 setSetsOpponent(0);
@@ -706,6 +733,29 @@ setPrevGames({ player: 0, opponent: 0, set: 1 });
   <div style={{ fontSize: '14px', fontWeight: '500' }}>{secondServeWonPct}%</div>
 </div>
 
+<div style={{ marginBottom: '16px' }}>
+  <span style={labelStyle}>Aces this set</span>
+  <input type="range" min="0" max="15" value={aces} onChange={e => setAces(+e.target.value)} style={inputStyle} />
+  <div style={{ fontSize: '14px', fontWeight: '500' }}>{aces}</div>
+</div>
+
+<div style={{ marginBottom: '16px' }}>
+  <span style={labelStyle}>Average rally length (shots)</span>
+  <input type="range" min="1" max="12" value={avgRallyLength} onChange={e => setAvgRallyLength(+e.target.value)} style={inputStyle} />
+  <div style={{ fontSize: '14px', fontWeight: '500' }}>{avgRallyLength} shots</div>
+</div>
+
+<div style={{ marginBottom: '16px' }}>
+  <span style={labelStyle}>First serve speed avg (km/h)</span>
+  <input type="range" min="140" max="220" value={firstServeSpeed} onChange={e => setFirstServeSpeed(+e.target.value)} style={inputStyle} />
+  <div style={{ fontSize: '14px', fontWeight: '500' }}>{firstServeSpeed} km/h</div>
+</div>
+
+<div style={{ marginBottom: '16px' }}>
+  <span style={labelStyle}>Break points created this set</span>
+  <input type="range" min="0" max="12" value={bpCreated} onChange={e => setBpCreated(+e.target.value)} style={inputStyle} />
+  <div style={{ fontSize: '14px', fontWeight: '500' }}>{bpCreated} (converted: {bpCreated - bpMissed > 0 ? bpCreated - bpMissed : 0})</div>
+</div>
 <div style={{ marginBottom: '16px' }}>
   <span style={labelStyle}>Service hold % this match</span>
   <input type="range" min="30" max="100" value={serviceHoldPct} onChange={e => setServiceHoldPct(+e.target.value)} style={inputStyle} />
