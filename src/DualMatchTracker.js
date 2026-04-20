@@ -6,7 +6,8 @@ function calculateSignalScore(stats, thresholds) {
   if (!thresholds) return 0;
 
   const { servePct, set1Serve, set2Serve, doubleFaults, bpMissed,
-    consecutivePoints, gamesLost, setContext, situation,
+    consecutivePoints, gamesLost, unforcedErrors, winners,
+    secondServeWonPct, serviceHoldPct, setContext, situation,
     bodyLanguage, umpireDispute, thirdSetCollapse, bpCascade,
     lostBagel, secondServePressure } = stats;
 
@@ -54,6 +55,24 @@ function calculateSignalScore(stats, thresholds) {
   else if (gamesLost >= 2) gamesScore = 5;
   if (secondServePressure) gamesScore += 12;
 
+  // Winner-to-error ratio score
+let werScore = 0;
+const wer = winners / Math.max(unforcedErrors, 1);
+if (wer < 0.5) werScore = 18;
+else if (wer < 0.8) werScore = 12;
+else if (wer < 1.0) werScore = 6;
+
+// Second serve weakness
+let s2Score = 0;
+if (secondServeWonPct <= 35) s2Score = 15;
+else if (secondServeWonPct <= 42) s2Score = 8;
+else if (secondServeWonPct <= 48) s2Score = 4;
+
+// Service hold collapse
+let holdScore = 0;
+if (serviceHoldPct <= 50) holdScore = 18;
+else if (serviceHoldPct <= 65) holdScore = 10;
+else if (serviceHoldPct <= 75) holdScore = 4;
   // Psychology flags
   let flagScore = 0;
   if (bodyLanguage) flagScore += 8;
@@ -70,7 +89,7 @@ function calculateSignalScore(stats, thresholds) {
     : situation === 'Leading, opp broke back' ? 1.5
     : situation === 'Serving to stay in set' ? 1.3 : 1.0;
 
-  const raw = serveScore + dfScore + moScore + bpScore + trendScore + gamesScore;
+    const raw = serveScore + dfScore + moScore + bpScore + trendScore + gamesScore + werScore + s2Score + holdScore;
   const total = Math.min(100, Math.round(raw * setMult * sitMult * 0.6 + flagScore));
   return total;
 }
@@ -85,6 +104,10 @@ function defaultStats(baseline) {
     bpMissed: 0,
     consecutivePoints: 0,
     gamesLost: 0,
+    unforcedErrors: 0,
+    winners: 0,
+    secondServeWonPct: 50,
+    serviceHoldPct: 75,
     setContext: '1st set',
     situation: 'Normal',
     bodyLanguage: false,
@@ -159,6 +182,13 @@ function PlayerPanel({ player, thresholds, stats, onChange, side }) {
       {slider('Break points missed', 'bpMissed', 0, 10)}
       {slider('Consecutive points lost', 'consecutivePoints', 0, 10)}
       {slider('Games lost in a row', 'gamesLost', 0, 8)}
+      {slider('Unforced errors this set', 'unforcedErrors', 0, 20)}
+{slider('Winners this set', 'winners', 0, 20)}
+<div style={{ fontSize: 11, color: '#999', marginTop: -8, marginBottom: 14 }}>
+  W/E ratio: {(stats.winners / Math.max(stats.unforcedErrors, 1)).toFixed(2)}
+</div>
+{slider('2nd serve points won %', 'secondServeWonPct', 20, 80, '%')}
+{slider('Service hold % this match', 'serviceHoldPct', 30, 100, '%')}
 
       {/* Set context */}
       <div style={{ marginBottom: 14 }}>
@@ -428,6 +458,8 @@ LIVE STATS RIGHT NOW:
 - BP missed: ${statsA.bpMissed}
 - Consecutive points lost: ${statsA.consecutivePoints}
 - Games lost in a row: ${statsA.gamesLost}
+- Unforced errors: ${statsA.unforcedErrors} | Winners: ${statsA.winners} (W/E ratio: ${(statsA.winners / Math.max(statsA.unforcedErrors, 1)).toFixed(2)})
+- 2nd serve won: ${statsA.secondServeWonPct}% | Service hold: ${statsA.serviceHoldPct}%
 - Set: ${statsA.setContext} | Situation: ${statsA.situation}
 - Active psychology flags: ${Object.entries({
   'Body language': statsA.bodyLanguage,
@@ -451,6 +483,8 @@ LIVE STATS RIGHT NOW:
 - BP missed: ${statsB.bpMissed}
 - Consecutive points lost: ${statsB.consecutivePoints}
 - Games lost in a row: ${statsB.gamesLost}
+- Unforced errors: ${statsB.unforcedErrors} | Winners: ${statsB.winners} (W/E ratio: ${(statsB.winners / Math.max(statsB.unforcedErrors, 1)).toFixed(2)})
+- 2nd serve won: ${statsB.secondServeWonPct}% | Service hold: ${statsB.serviceHoldPct}%
 - Set: ${statsB.setContext} | Situation: ${statsB.situation}
 - Active psychology flags: ${Object.entries({
   'Body language': statsB.bodyLanguage,
