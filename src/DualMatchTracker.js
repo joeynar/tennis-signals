@@ -299,6 +299,9 @@ const [whoServesFirst, setWhoServesFirst] = useState('A'); // 'A' or 'B'
 const [breakHistory, setBreakHistory] = useState([]);
 const [prevGames, setPrevGames] = useState({ a: 0, b: 0, set: 1 });
 const [prematchResearch, setPrematchResearch] = useState(null);
+const [liveMatchId, setLiveMatchId] = useState(null);
+const [liveConnected, setLiveConnected] = useState(false);
+const [lastUpdated, setLastUpdated] = useState(null);
 
   // Load all players on mount
   useEffect(() => {
@@ -369,6 +372,73 @@ const [prematchResearch, setPrematchResearch] = useState(null);
       ).single()
       .then(({ data }) => { setH2H(data || null); });
   }, [playerAId, playerBId]);
+  // Real-time listener for live match data
+useEffect(() => {
+  if (!liveMatchId) return;
+
+  // Subscribe to changes in live_match table
+  const subscription = supabase
+    .channel('live-match-channel')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'live_match',
+      filter: `match_id=eq.${liveMatchId}`
+    }, (payload) => {
+      const data = payload.new;
+      if (!data) return;
+
+      // Update scores
+      setSetsA(data.sets_a || 0);
+      setSetsB(data.sets_b || 0);
+      setGamesA(data.games_a || 0);
+      setGamesB(data.games_b || 0);
+
+      // Update Player A sliders
+      if (data.a_first_serve_pct) {
+        setStatsA(prev => ({
+          ...prev,
+          servePct: data.a_first_serve_pct,
+          doubleFaults: data.a_double_faults || prev.doubleFaults,
+          aces: data.a_aces || prev.aces,
+          winners: data.a_winners || prev.winners,
+          unforcedErrors: data.a_unforced_errors || prev.unforcedErrors,
+          bpMissed: data.a_bp_faced ? (data.a_bp_faced - data.a_bp_won) : prev.bpMissed,
+          bpCreated: data.a_bp_faced || prev.bpCreated,
+          secondServeWonPct: data.a_second_serve_won_pct || prev.secondServeWonPct,
+          serviceHoldPct: data.a_service_games_played > 0
+            ? Math.round((data.a_service_games_won / data.a_service_games_played) * 100)
+            : prev.serviceHoldPct
+        }));
+      }
+
+      // Update Player B sliders
+      if (data.b_first_serve_pct) {
+        setStatsB(prev => ({
+          ...prev,
+          servePct: data.b_first_serve_pct,
+          doubleFaults: data.b_double_faults || prev.doubleFaults,
+          aces: data.b_aces || prev.aces,
+          winners: data.b_winners || prev.winners,
+          unforcedErrors: data.b_unforced_errors || prev.unforcedErrors,
+          bpMissed: data.b_bp_faced ? (data.b_bp_faced - data.b_bp_won) : prev.bpMissed,
+          bpCreated: data.b_bp_faced || prev.bpCreated,
+          secondServeWonPct: data.b_second_serve_won_pct || prev.secondServeWonPct,
+          serviceHoldPct: data.b_service_games_played > 0
+            ? Math.round((data.b_service_games_won / data.b_service_games_played) * 100)
+            : prev.serviceHoldPct
+        }));
+      }
+
+      setLastUpdated(new Date().toISOString());
+      setLiveConnected(true);
+    })
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(subscription);
+  };
+}, [liveMatchId]);
   // Load pre-match research when both players selected
 useEffect(() => {
   if (!playerAId || !playerBId) return;
@@ -756,6 +826,58 @@ Provide three sections:
     }}
   />
 )}
+
+{/* Live match connect button */}
+{!liveConnected && playerA && playerB && (
+  <div style={{
+    padding: '10px 14px', borderRadius: 8, marginBottom: 12,
+    background: '#fff3e0', border: '1px solid #ffcc80'
+  }}>
+    <div style={{ fontSize: 12, color: '#e65100', marginBottom: 8 }}>
+      No live data connected. Enter match ID from SofaScore to auto-track.
+    </div>
+    <div style={{ display: 'flex', gap: 8 }}>
+      <input
+        placeholder="SofaScore match ID (e.g. 12345678)"
+        style={{
+          flex: 1, padding: '8px 12px', borderRadius: 6,
+          border: '1px solid #ddd', fontSize: 13
+        }}
+        onKeyDown={e => {
+          if (e.key === 'Enter') setLiveMatchId(e.target.value.trim());
+        }}
+      />
+      <button
+        onClick={e => {
+          const input = e.target.previousSibling;
+          if (input.value) setLiveMatchId(input.value.trim());
+        }}
+        style={{
+          padding: '8px 16px', borderRadius: 6, background: '#e53935',
+          color: 'white', border: 'none', fontSize: 12,
+          fontWeight: 600, cursor: 'pointer'
+        }}>
+        Connect
+      </button>
+    </div>
+  </div>
+)}
+{/* Live connection bar */}
+{liveConnected && (
+  <div style={{
+    padding: '10px 14px', borderRadius: 8, marginBottom: 12,
+    background: '#e8f5e9', border: '1px solid #a5d6a7',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+  }}>
+    <div style={{ fontSize: 12, fontWeight: 700, color: '#2e7d32' }}>
+      ● Live data connected — auto-updating every 30s
+    </div>
+    <div style={{ fontSize: 11, color: '#388e3c' }}>
+      {lastUpdated ? `Last: ${new Date(lastUpdated).toLocaleTimeString()}` : ''}
+    </div>
+  </div>
+)}
+
 {/* Pre-match research bar */}
 {prematchResearch && playerA && playerB && (
   <div style={{
