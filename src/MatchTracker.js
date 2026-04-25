@@ -43,6 +43,9 @@ const [bpCreated, setBpCreated] = useState(0);
 const [tournamentOptions, setTournamentOptions] = useState([]);
 const [tournamentProfile, setTournamentProfile] = useState(null);
 const [prematchResearch, setPrematchResearch] = useState(null);
+const [liveMatchId, setLiveMatchId] = useState(null);
+const [liveConnected, setLiveConnected] = useState(false);
+const [lastUpdated, setLastUpdated] = useState(null);
 const [opponentProfile, setOpponentProfile] = useState(null);
 const [whoServesFirst, setWhoServesFirst] = useState('player'); // 'player' or 'opponent'
 const [breakHistory, setBreakHistory] = useState([]); // array of {set, gameNumber, brokenPlayer, score}
@@ -123,6 +126,51 @@ const [prevGames, setPrevGames] = useState({ player: 0, opponent: 0, set: 1 });
       .single();
     if (data) setThresholds(data);
   }
+  // Real-time listener for live match data
+useEffect(() => {
+  if (!liveMatchId) return;
+
+  const subscription = supabase
+    .channel('live-match-single')
+    .on('postgres_changes', {
+      event: '*',
+      schema: 'public',
+      table: 'live_match',
+      filter: `match_id=eq.${liveMatchId}`
+    }, (payload) => {
+      const data = payload.new;
+      if (!data) return;
+
+      // Update score
+      setSetsPlayer(data.sets_a || 0);
+      setSetsOpponent(data.sets_b || 0);
+      setGamesPlayer(data.games_a || 0);
+      setGamesOpponent(data.games_b || 0);
+
+      // Update sliders from live data
+      if (data.a_first_serve_pct) setServePct(data.a_first_serve_pct);
+      if (data.a_double_faults !== undefined) setDoubleFaults(data.a_double_faults);
+      if (data.a_aces !== undefined) setAces(data.a_aces);
+      if (data.a_winners !== undefined) setWinners(data.a_winners);
+      if (data.a_unforced_errors !== undefined) setUnforcedErrors(data.a_unforced_errors);
+      if (data.a_bp_faced !== undefined) {
+        setBpMissed(data.a_bp_faced - (data.a_bp_won || 0));
+        setBpCreated(data.a_bp_faced);
+      }
+      if (data.a_second_serve_won_pct) setSecondServeWonPct(data.a_second_serve_won_pct);
+      if (data.a_service_games_played > 0) {
+        setServiceHoldPct(Math.round((data.a_service_games_won / data.a_service_games_played) * 100));
+      }
+
+      setLastUpdated(new Date().toISOString());
+      setLiveConnected(true);
+    })
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(subscription);
+  };
+}, [liveMatchId]);
   async function fetchTournamentProfile(name) {
     if (!name || name.length < 3) return;
     const { data } = await supabase
@@ -585,6 +633,56 @@ setPrevGames({ player: 0, opponent: 0, set: 1 });
         <strong>Market error:</strong> {prematchResearch.market_error_pp}pp gap detected
       </div>
     )}
+  </div>
+)}
+{/* Live connection bar */}
+{liveConnected && (
+  <div style={{
+    padding: '10px 14px', borderRadius: 8, marginBottom: 12,
+    background: '#e8f5e9', border: '1px solid #a5d6a7',
+    display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+  }}>
+    <div style={{ fontSize: 12, fontWeight: 700, color: '#2e7d32' }}>
+      ● Live data connected — auto-updating every 30s
+    </div>
+    <div style={{ fontSize: 11, color: '#388e3c' }}>
+      {lastUpdated ? `Last: ${new Date(lastUpdated).toLocaleTimeString()}` : ''}
+    </div>
+  </div>
+)}
+
+{!liveConnected && (
+  <div style={{
+    padding: '10px 14px', borderRadius: 8, marginBottom: 12,
+    background: '#fff3e0', border: '1px solid #ffcc80'
+  }}>
+    <div style={{ fontSize: 12, color: '#e65100', marginBottom: 8 }}>
+      No live data connected. Enter SofaScore match ID to auto-track.
+    </div>
+    <div style={{ display: 'flex', gap: 8 }}>
+      <input
+        placeholder="SofaScore match ID (e.g. 12345678)"
+        style={{
+          flex: 1, padding: '8px 12px', borderRadius: 6,
+          border: '1px solid #ddd', fontSize: 13, boxSizing: 'border-box'
+        }}
+        onKeyDown={e => {
+          if (e.key === 'Enter') setLiveMatchId(e.target.value.trim());
+        }}
+      />
+      <button
+        onClick={e => {
+          const input = e.target.previousSibling;
+          if (input.value) setLiveMatchId(input.value.trim());
+        }}
+        style={{
+          padding: '8px 16px', borderRadius: 6, background: '#e53935',
+          color: 'white', border: 'none', fontSize: 12,
+          fontWeight: 600, cursor: 'pointer'
+        }}>
+        Connect
+      </button>
+    </div>
   </div>
 )}
 {tournamentProfile && (
