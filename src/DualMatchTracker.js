@@ -372,13 +372,16 @@ const [lastUpdated, setLastUpdated] = useState(null);
       ).single()
       .then(({ data }) => { setH2H(data || null); });
   }, [playerAId, playerBId]);
-  // Real-time listener for live match data
-useEffect(() => {
-  if (!liveMatchId) return;
+  
+    
 
-  // Subscribe to changes in live_match table
-  const subscription = supabase
-    .channel('live-match-channel')
+    useEffect(() => {
+      if (!liveMatchId) return;
+      console.log('Live match ID set:', liveMatchId);
+    
+      const subscription = supabase
+        .channel('live-match-channel')
+
     .on('postgres_changes', {
       event: '*',
       schema: 'public',
