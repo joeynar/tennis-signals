@@ -848,10 +848,10 @@ Provide three sections:
         }}
       />
       <button
-        onClick={e => {
-          const input = e.target.previousSibling;
-          if (input.value) setLiveMatchId(input.value.trim());
-        }}
+  onClick={() => {
+    const input = document.querySelector('input[placeholder="SofaScore match ID (e.g. 12345678)"]');
+    if (input && input.value) setLiveMatchId(input.value.trim());
+  }}
         style={{
           padding: '8px 16px', borderRadius: 6, background: '#e53935',
           color: 'white', border: 'none', fontSize: 12,
