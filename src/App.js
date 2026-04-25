@@ -5,6 +5,7 @@ import H2HUploader from './H2HUploader';
 import DualMatchTracker from './DualMatchTracker';
 import TournamentUploader from './TournamentUploader';
 import PrematchUploader from './PrematchUploader';
+import LiveMatchSelector from './LiveMatchSelector';
 
 function App() {
   const [players, setPlayers] = useState([]);
@@ -14,7 +15,8 @@ function App() {
   const [showDual, setShowDual] = useState(false);
   const [showTournament, setShowTournament] = useState(false);
   const [showPrematch, setShowPrematch] = useState(false);
-
+  const [showLive, setShowLive] = useState(false);
+  const [activeMatch, setActiveMatch] = useState(null);
   useEffect(() => {
     fetchPlayers();
   }, []);
@@ -27,6 +29,15 @@ function App() {
     if (error) console.error('Error:', error);
     else setPlayers(data);
     setLoading(false);
+  }
+  if (showLive) {
+    return <LiveMatchSelector
+      onBack={() => setShowLive(false)}
+      onMatchSelected={(match) => {
+        setActiveMatch(match);
+        setShowLive(false);
+      }}
+    />;
   }
   if (showPrematch) {
     return <PrematchUploader onBack={() => setShowPrematch(false)} />;
@@ -87,6 +98,17 @@ function App() {
   }}
 >
   📊 Upload Pre-Match Research
+</button>
+<button
+  onClick={() => setShowLive(true)}
+  style={{
+    width: '100%', padding: '14px', borderRadius: 8, marginBottom: 24,
+    background: '#e53935', color: 'white', border: 'none',
+    fontSize: 15, fontWeight: 600, cursor: 'pointer',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8
+  }}
+>
+  ● Live Auto-Track
 </button>
 
       {loading ? (
